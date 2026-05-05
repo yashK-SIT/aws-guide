@@ -1,738 +1,357 @@
-# Enterprise AWS Infrastructure & Deployment Playbook
+# Enterprise AWS Master Guide: From Zero to Production
+
+> **Persona:** Senior DevOps Architect sitting next to a Fresher.
+> **Goal:** A foolproof, step-by-step path to production with zero risk to existing infrastructure.
 
 ---
 
-How to use this playbook:
+## 📋 Table of Contents
 
-- If you are new, start with **Beginner Mode: Foolproof A to Z** below.
-- If you are experienced, use the Advanced Reference sections (0-15).
-- Every step includes a Validation or Expected Result. If you cannot confirm it, stop and resolve before moving on.
+### 🏆 PART I: THE FOOLPROOF MASTER GUIDE (A-Z Walkthrough)
+*Best for: Freshers, Developers, and Junior DevOps needing a safe, verified path.*
 
-## Table of Contents
-
-| #    | Section                                                                                   | What You Will Learn                                                     |
-| --- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Start | [Beginner Mode: Foolproof A to Z](#beginner-mode-foolproof-a-to-z)                       | Step-by-step safe deployment without breaking existing systems          |
-| 0.0 | [AWS Console Orientation](#00-aws-console-orientation)                                    | Console layout, regions, account context                                |
-| 0.1 | [Creating an AWS Account](#01-creating-an-aws-account-first-time-setup)                   | Root account setup and safety                                           |
-| 0.2 | [Installing the AWS CLI](#02-installing-the-aws-cli)                                      | CLI installation on Windows, macOS, and Linux                           |
-| 0.3 | [Configuring AWS CLI Credentials](#03-configuring-aws-cli-credentials)                    | Access keys, profiles, validation                                       |
-| 0.4 | [Creating an SSH Key Pair](#04-creating-an-ssh-key-pair)                                  | SSH keys, permissions, key safety                                       |
-| 0.5 | [Do Not Touch Existing Resources](#05-do-not-touch-existing-resources)                    | Safe-change protocol for shared accounts                                |
-| 0.6 | [Pre-Flight Audit](#06-pre-flight-audit)                                                  | Baseline inventory before creating anything                             |
-| 0.7 | [Quick Deployment Runbook (A → Z)](#07-quick-deployment-runbook-a--z)                     | End-to-end deployment flow                                              |
-| 0.8 | [New Project Isolation Protocol](#08-new-project-isolation-protocol)                      | VPC/SG isolation, naming, port strategy                                 |
-| 0.9 | [Billing Protection](#09-billing-protection)                                              | Budgets, Free Tier, anomaly alerts                                      |
-| 0.10 | [New Developer Onboarding](#010-new-developer-onboarding)                                | Join an existing account safely                                         |
-| 0.11 | [Installing Essential Tools](#011-installing-essential-tools)                            | jq, git, curl                                                           |
-| 0.12 | [Pro Tips for Beginners](#012-pro-tips-for-beginners)                                    | Early guardrails and habits                                             |
-| 1   | [Introduction and Architectural Philosophy](#1-introduction-and-architectural-philosophy) | Why this playbook exists, who should use it, scope and philosophy       |
-| 2   | [Scenario-Based Entry & Decision Logic](#2-scenario-based-entry--decision-logic)          | How to classify your engagement: Greenfield, Brownfield, or Black Box   |
-| 3   | [AWS Account & Security (IAM)](#3-aws-account--security-iam)                              | Root account lockdown, IAM Users/Roles/Policies, MFA, secrets           |
-| 4   | [AWS Networking (VPC, Subnets, Routing)](#4-aws-networking-vpc-subnets-routing)           | VPC creation, public/private subnets, IGW, NAT Gateway, routing         |
-| 5   | [EC2 Setup & Compute Strategy](#5-ec2-setup--compute-strategy)                            | Instance types, AMI selection, SSH, Node.js, Nginx setup                |
-| 6   | [S3 Storage & Bucket Management](#6-s3-storage--bucket-management)                        | Bucket creation, permissions, signed URLs, static hosting               |
-| 7   | [Database Strategy (RDS & Alternatives)](#7-database-strategy-rds--alternatives)          | RDS provisioning, backups, read replicas, scaling                       |
-| 8   | [Project Deployment (Backend + Frontend)](#8-project-deployment-backend--frontend)        | Node.js/PM2, React/Nginx/S3, secrets, deployment runbook                |
-| 9   | [Scaling Strategies (Vertical & Horizontal)](#9-scaling-strategies-vertical--horizontal)  | Auto Scaling Groups, ALB, target tracking policies                      |
-| 10  | [CI/CD Pipeline](#10-cicd-pipeline)                                                       | GitHub Actions, Build→Test→Deploy, Rolling & Blue-Green deployment      |
-| 11  | [Monitoring & Logging](#11-monitoring--logging)                                           | CloudWatch metrics, logs, alarms, dashboards, structured logging        |
-| 12  | [Advanced Security Practices](#12-advanced-security-practices)                            | Least privilege, Secrets Manager lifecycle, WAF, GuardDuty, breaches    |
-| 13  | [Troubleshooting Guide](#13-troubleshooting-guide)                                        | SSH issues, port diagnostics, PM2 debugging, 60-second triage           |
-| 14  | [Running Node.js on AWS at Scale](#chapter-14-running-nodejs-on-aws-at-scale)             | Stateless services, session storage, scaling patterns, cost controls    |
-| 15  | [Production Readiness Checklist](#production-readiness-checklist)                         | Final go-live checklist before production launch                        |
+1. <a name="safety-ref"></a>[⚠️ Safety First: Do Not Touch Existing Resources](#safety-first-do-not-touch-existing-resources)
+2. [Step 1: Account Setup & Root Lockdown](#step-1-account-setup-root-lockdown)
+3. [Step 2: Safe IAM Setup (Daily Driver User)](#step-2-safe-iam-setup-daily-driver-user)
+4. [Step 3: Network Isolation (New Project VPC)](#step-3-network-isolation-new-project-vpc)
+5. [Step 4: Provisioning Compute (EC2)](#step-4-provisioning-compute-ec2)
+6. [Step 5: Secure Server Connection](#step-5-secure-server-connection)
+7. [Step 6: Installing Dependencies (Node/Docker)](#step-6-installing-dependencies-node-docker)
+8. [Step 7: Deploying the Application (PM2)](#step-7-deploying-the-application-pm2)
+9. [Step 8: Domain & SSL Setup (HTTPS)](#step-8-domain-ssl-setup-https)
+10. [Step 9: Basic CI/CD (GitHub Actions)](#step-9-basic-cicd-github-actions)
+11. [Step 10: Monitoring & Logging](#step-10-monitoring-logging)
+12. [✅ Final Validation Checklist](#final-validation-checklist)
 
 ---
 
-## Beginner Mode: Foolproof A to Z
+### 📘 PART II: ADVANCED ARCHITECTURAL REFERENCE
+*Best for: Senior Engineers needing deep-dive technical specs and decision logic.*
 
-This is the primary path for freshers, developers, and junior DevOps engineers. Follow each step in order. Do not skip validation checks.
-
-### Step 0: Safety Gate (Read This First)
-
-⚠️ **DO NOT TOUCH EXISTING RESOURCES**
-
-If this AWS account already has any resources (EC2, RDS, S3, VPCs), you must treat it as a shared production account.
-
-Rules:
-
-1. Never modify resources you did not create.
-2. Always create new VPCs, security groups, EC2 instances, IAM roles, and S3 buckets.
-3. Never use the same VPC or security group as an existing project.
-4. Never touch anything labeled `prod`, `production`, or `live`.
-
-✅ **Expected result:** You understand whether the account is new (empty) or existing (shared).
-
-How to check if resources already exist (AWS Console):
-
-1. Open https://console.aws.amazon.com/
-2. In the top search bar, type **EC2** and click **EC2**.
-3. In the left menu, click **Instances**.
-4. If you see any running or stopped instances, the account already has resources.
-5. Repeat for **RDS** (Databases) and **S3** (Buckets).
-
-❌ **If you see resources you did not create:** Stop and complete the Pre-Flight Audit in Section 0.6 before doing anything else.
+| Section | Topic | What You Will Learn |
+| --- | --- | --- |
+| 0.0 | [Console Orientation](#00-aws-console-orientation) | Regions, Accounts, and UI Navigation |
+| 1.0 | [Architectural Philosophy](#1-introduction-and-architectural-philosophy) | Why we use these specific patterns |
+| 2.0 | [Scenario Decision Logic](#2-scenario-based-entry--decision-logic) | Greenfield vs. Brownfield audits |
+| 3.0 | [IAM Deep Dive](#3-aws-account--security-iam) | Roles, Policies, and SSO |
+| 4.0 | [Networking Deep Dive](#4-aws-networking-vpc-subnets-routing) | VPC CIDR math and routing |
+| 5.0 | [EC2 & Compute Strategy](#5-ec2-setup--compute-strategy) | Instance families and AMI baking |
+| 8.0 | [Deployment Strategies](#8-project-deployment-backend--frontend) | PM2, Nginx, and S3/CloudFront |
+| 9.0 | [Scaling & Resilience](#9-scaling-strategies-vertical--horizontal) | ASG, ALB, and Auto-scaling |
+| 10.0 | [CI/CD Pipelines](#10-cicd-pipeline) | Advanced GitOps workflows |
+| 12.0 | [Advanced Security](#12-advanced-security-practices) | KMS, WAF, and Shield |
+| 13.0 | [Troubleshooting](#13-troubleshooting-guide) | Port diagnostics and triage |
 
 ---
 
-### Step 1: Choose Project Name, Environment, and Region
+## 🏆 PART I: THE FOOLPROOF MASTER GUIDE
 
-Naming convention (mandatory):
+### <a name="safety-first-do-not-touch-existing-resources"></a>⚠️ SAFETY FIRST: DO NOT TOUCH EXISTING RESOURCES
 
-```
-project-name-environment-resource
-example: acme-dev-ec2
-```
+If you are entering an AWS account that already has data or running applications, **STOP.** A single accidental click can cause a company-wide outage.
 
-Micro-steps:
+#### The Golden Rules
+1. **Never Modify Existing Resources:** If you didn't create it, don't edit it, delete it, or restart it.
+2. **Naming Convention:** Every resource you create MUST follow this pattern:
+   `projectname-env-resource`
+   *Example:* `myproject-dev-ec2`, `acme-prod-s3`
+3. **Dedicated Isolation:** Always create a NEW VPC for your project. Never use the "Default VPC" or another project's VPC.
+4. **Read Tags:** If you see a resource with a tag like `Environment: Production`, stay away from it.
 
-1. Pick a short project name (lowercase, no spaces). Example: `acme`.
-2. Choose an environment: `dev`, `staging`, or `prod`.
-3. Choose one AWS region and stick to it (example: `us-east-1`).
-
-✅ **Expected result:** You have three values you will use everywhere:
-
-- Project name: `acme`
-- Environment: `dev`
-- Region: `us-east-1`
-
-💡 Tip: Keep a small note with these values while you work.
+💡 **Tip:** If you are unsure about a button, **DO NOT CLICK IT.** Ask a senior engineer first.
 
 ---
 
-### Step 2: Create an AWS Account (Skip if you already have one)
+### <a name="step-1-account-setup-root-lockdown"></a>STEP 1: ACCOUNT SETUP & ROOT LOCKDOWN
+*Goal: Secure the account so it cannot be hacked.*
 
-Where: **AWS Console (browser)**
+#### 1.1 Create the Account
+1. Open your browser (Chrome/Firefox recommended).
+2. Go to [https://aws.amazon.com/](https://aws.amazon.com/).
+3. Click the orange button **"Create an AWS Account"** (Top Right).
+4. Enter a professional email (e.g., `aws-admin@yourcompany.com`).
+5. Follow the prompts to add your credit card and verify your identity via phone.
+6. **Support Plan:** Select **"Basic Support - Free"**.
 
-Micro-steps:
+#### 1.2 Lock the "Root" User (MANDATORY)
+*What you should see:* After signing in, your email address will be in the top-right corner. This is the "Root" user. We must lock it and never use it again.
 
-1. Open Chrome or Firefox.
-2. Go to https://aws.amazon.com/
-3. Click **Create an AWS Account** (top-right).
-4. Enter a dedicated email (example: `aws-root@yourcompany.com`).
-5. Enter an AWS account name (example: `acme-dev`).
-6. Verify the email with the 6-digit code.
-7. Create a strong password (16+ characters).
-8. Fill in contact details.
-9. Add a valid credit card.
-10. Verify identity via SMS or call.
-11. Choose **Basic support plan (Free)**.
-12. Click **Complete sign up**.
+1. Click your **Account Name** (Top Right) → Click **"Security Credentials"**.
+2. Look for **"Multi-factor authentication (MFA)"**.
+3. Click **"Assign MFA device"**.
+4. **Device Name:** `root-mfa`
+5. Select **"Authenticator app"** → Click **Next**.
+6. Open Google Authenticator or Authy on your phone.
+7. Scan the QR code shown on the screen.
+8. Enter two consecutive 6-digit codes from your phone → Click **"Add MFA"**.
 
-✅ **Expected result:** You can log in at https://console.aws.amazon.com/ and see the AWS Console dashboard.
-
-❌ **Common error:** "This email address is already registered".
-- **Fix:** Use **Sign in to existing account** instead of creating a new one.
-
----
-
-### Step 3: Lock Down the Root Account (Mandatory)
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. Log in as **Root user**.
-2. Click your account name (top-right) -> **Security credentials**.
-3. Under **Multi-factor authentication (MFA)**, click **Assign MFA device**.
-4. Choose **Authenticator app**.
-5. Scan the QR code in Google Authenticator or Authy.
-6. Enter two consecutive codes and click **Add MFA**.
-
-✅ **Expected result:** The MFA device shows as **Assigned**.
-
-If any **Root access keys** exist:
-
-1. In **Security credentials**, scroll to **Access keys**.
-2. Click **Delete** on each key.
-
-✅ **Expected result:** No Root access keys exist.
+✅ **Success:** You will see "MFA device assigned successfully."
+⚠️ **Warning:** If you lose your phone, you might lose your account. Save the backup codes!
 
 ---
 
-### Step 4: Create an IAM Admin User (Daily Use)
+### <a name="step-2-safe-iam-setup-daily-driver-user"></a>STEP 2: SAFE IAM SETUP (DAILY DRIVER USER)
+*Goal: Create a user for daily work so we don't risk the Root account.*
 
-Where: **AWS Console**
+#### 2.1 Create your Admin User
+1. In the top search bar, type **"IAM"** and click the first result.
+2. In the left sidebar, click **"Users"** → Click **"Create user"**.
+3. **User name:** `yourname-admin` (e.g., `john-admin`).
+4. Check the box **"Provide user access to the AWS Management Console"**.
+5. Select **"I want to create an IAM user"**.
+6. **Password:** Choose "Custom password" and enter a strong one.
+7. **Next** → Select **"Attach policies directly"**.
+8. In the search box, type `AdministratorAccess`.
+9. Check the box next to `AdministratorAccess` → Click **Next** → Click **Create user**.
 
-Micro-steps:
+#### 2.2 Sign in as the New User
+1. Download the **"CSV file"** with your credentials.
+2. Copy the **Console sign-in URL** from the success screen.
+3. Logout of the Root account.
+4. Paste the URL into your browser and sign in with your new user (`john-admin`).
 
-1. In the search bar, type **IAM** and open it.
-2. Click **Users** -> **Create user**.
-3. Username: `yourname-admin` (example: `ravi-admin`).
-4. Check **Provide user access to the AWS Management Console**.
-5. Choose **I want to create an IAM user**.
-6. Set a custom password and uncheck "Users must create a new password".
-7. Click **Next**.
-8. Permissions: **Attach policies directly**.
-9. Search and select **AdministratorAccess**.
-10. Click **Next** -> **Create user**.
-
-✅ **Expected result:** IAM user exists and can sign in.
-
----
-
-### Step 5: Enable Billing Protection
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. Click your account name -> **Account**.
-2. Scroll to **IAM user and role access to Billing information**.
-3. Click **Edit** -> enable the checkbox -> **Update**.
-4. Go to **Billing and Cost Management**.
-5. In left menu, click **Budgets** -> **Create budget**.
-6. Choose **Use a template (simplified)** -> **Zero spend budget**.
-7. Enter budget name: `acme-zero-spend`.
-8. Add your email address.
-9. Click **Create budget**.
-
-✅ **Expected result:** Budget appears in the Budgets list.
-
-❌ **Common error:** Budget page is missing.
-- **Fix:** Use https://console.aws.amazon.com/billing/ and ensure billing access is enabled.
+❌ **Common Error:** "Access Denied" when trying to create things.
+💡 **Fix:** You are likely still logged in as a restricted user. Check the top-right corner to see who you are.
 
 ---
 
-### Step 6: Install the AWS CLI (Local Machine)
+### <a name="step-3-network-isolation-new-project-vpc"></a>STEP 3: NETWORK ISOLATION (NEW PROJECT VPC)
+*Goal: Create a "Private Island" for your project where it won't interfere with others.*
 
-Where: **Your laptop**
+#### 3.1 The Magic VPC Wizard
+1. In the top search bar, type **"VPC"** and click it.
+2. Click the orange button **"Create VPC"**.
+3. Select **"VPC and more"** (This is the foolproof way).
+4. **Name tag auto-generation:** `myproject-dev` (Replace `myproject` with your project name).
+5. **IPv4 CIDR block:** `10.0.0.0/16`.
+6. **Number of Availability Zones:** `2`.
+7. **Number of Public Subnets:** `2`.
+8. **Number of Private Subnets:** `2`.
+9. **NAT Gateways:** Select **"In 1 AZ"** (Saves money, but allows your private servers to talk to the internet).
+10. **VPC Endpoints:** Select **"S3 Gateway"** (It's free and fast).
+11. Click **"Create VPC"**.
 
-Windows:
+#### 3.2 What to Expect
+You will see a series of green checkmarks as AWS creates the subnets, routes, and internet connections.
 
-1. Download: https://awscli.amazonaws.com/AWSCLIV2.msi
-2. Run the installer and click **Next** until **Finish**.
-3. Close and reopen PowerShell.
-4. Run:
+⚠️ **Warning:** NAT Gateways cost about $32/month. If you are just testing, delete the VPC when finished!
 
-```powershell
-aws --version
-```
+---
 
-macOS:
+### <a name="step-4-provisioning-compute-ec2"></a>STEP 4: PROVISIONING COMPUTE (EC2)
+*Goal: Create the actual virtual server for your app.*
 
+#### 4.1 Launch the Instance
+1. In the top search bar, type **"EC2"** and click it.
+2. Click **"Launch instance"**.
+3. **Name:** `myproject-dev-app-01`.
+4. **OS (AMI):** Select **"Amazon Linux 2023"** (It is the most stable for AWS).
+5. **Instance Type:** Select **`t3.micro`** (If you want to stay in Free Tier) or **`t3.medium`** (Recommended for Node.js apps).
+6. **Key Pair:** Click **"Create new key pair"**.
+   - Name: `myproject-dev-key`
+   - Type: `RSA`
+   - Format: `.pem`
+   - **Click "Create" and SAVE the file immediately to your "Downloads" folder.**
+7. **Network Settings:** Click **"Edit"**.
+   - **VPC:** Select your `myproject-dev-vpc`.
+   - **Subnet:** Select a **Private** subnet (e.g., `myproject-dev-subnet-private1`).
+   - **Auto-assign public IP:** **Disable**.
+8. **Firewall (Security Groups):** Click **"Create security group"**.
+   - Name: `myproject-dev-app-sg`
+   - **Add Inbound Rule:**
+     - Type: `Custom TCP`, Port: `3000`, Source: `0.0.0.0/0` (Allows traffic to your app).
+9. **Advanced Details:**
+   - **IAM Instance Profile:** Select your SSM role (See Advanced Reference Section 5.5).
+10. Click **"Launch instance"**.
+
+---
+
+### <a name="step-5-secure-server-connection"></a>STEP 5: SECURE SERVER CONNECTION
+*Goal: Log into your server without exposing it to the public internet.*
+
+#### 5.1 Using SSM Session Manager (Recommended)
+1. Go to your **EC2 Dashboard** → **Instances**.
+2. Click your running instance (`myproject-dev-app-01`).
+3. Click the **"Connect"** button at the top.
+4. Select the **"Session Manager"** tab.
+5. Click **"Connect"**.
+6. A terminal will open in your browser!
+
+❌ **Common Error:** "The IAM instance profile... does not have the required permissions."
+💡 **Fix:** You must attach the `AmazonSSMManagedInstanceCore` policy to your instance's IAM role (See Section 5.5 in Part II).
+
+---
+
+### <a name="step-6-installing-dependencies-node-docker"></a>STEP 6: INSTALLING DEPENDENCIES (NODE/DOCKER)
+*Goal: Prepare the server to run your code.*
+
+#### 6.1 Install Node.js
 ```bash
-curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
-sudo installer -pkg AWSCLIV2.pkg -target /
-aws --version
-```
-
-Linux:
-
-```bash
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-aws --version
-```
-
-✅ **Expected result:** `aws-cli/2.x.x` appears.
-
-❌ **Common error:** `aws: command not found`.
-- **Fix:** Close and reopen your terminal, then retry.
-
----
-
-### Step 7: Configure AWS CLI Credentials
-
-Where: **AWS Console + your laptop**
-
-Micro-steps (Console):
-
-1. IAM -> Users -> click your IAM user.
-2. Open **Security credentials** tab.
-3. Under **Access keys**, click **Create access key**.
-4. Choose **Command Line Interface (CLI)** and confirm.
-5. Click **Create access key**.
-6. Download the CSV file immediately.
-
-Micro-steps (Terminal):
-
-```bash
-aws configure
-```
-
-Enter:
-
-- AWS Access Key ID: (from CSV)
-- AWS Secret Access Key: (from CSV)
-- Default region: `us-east-1` (or your chosen region)
-- Default output format: `json`
-
-Verify:
-
-```bash
-aws sts get-caller-identity
-```
-
-✅ **Expected result:** Your Account ID and IAM user ARN are shown.
-
-❌ **Common error:** `InvalidClientTokenId`.
-- **Fix:** Re-run `aws configure` and paste keys carefully.
-
----
-
-### Step 8: Create an SSH Key Pair
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. Search **EC2** -> open EC2.
-2. In left menu, click **Key Pairs**.
-3. Click **Create key pair**.
-4. Name: `acme-dev-keypair`.
-5. Type: **ED25519** (recommended).
-6. File format: **.pem**.
-7. Click **Create key pair**.
-
-✅ **Expected result:** A `.pem` file downloads to your computer.
-
-Secure the key file:
-
-Windows (PowerShell):
-
-Replace `YOUR_NAME` with your Windows username (the folder name under `C:\Users`).
-
-```powershell
-icacls "C:\Users\YOUR_NAME\Downloads\acme-dev-keypair.pem"
-icacls "C:\Users\YOUR_NAME\Downloads\acme-dev-keypair.pem" /inheritance:r /grant:r "%username%:(R)"
-```
-
-macOS/Linux:
-
-```bash
-chmod 400 ~/Downloads/acme-dev-keypair.pem
-```
-
-❌ **Common error:** `Permissions are too open`.
-- **Fix:** Run the permission command above.
-
----
-
-### Step 9: Pre-Flight Audit (Required for Existing Accounts)
-
-Where: **Your laptop terminal**
-
-Run this read-only audit and save the output before creating anything:
-
-```bash
-echo "=== IDENTITY ===" && aws sts get-caller-identity
-echo "=== REGION ===" && aws configure get region
-echo "=== EC2 ===" && aws ec2 describe-instances --output table
-echo "=== VPCS ===" && aws ec2 describe-vpcs --output table
-echo "=== S3 ===" && aws s3 ls
-echo "=== RDS ===" && aws rds describe-db-instances --output table
-```
-
-✅ **Expected result:** You have a baseline of what already exists.
-
----
-
-### Step 10: Create a Dedicated VPC (New Project Isolation)
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. Search **VPC** -> open **VPC** service.
-2. Click **Create VPC**.
-3. Choose **VPC only**.
-4. Name: `acme-dev-vpc`.
-5. IPv4 CIDR: `10.0.0.0/16`.
-6. Click **Create VPC**.
-
-✅ **Expected result:** VPC appears in the VPC list with your name.
-
-Create a public subnet:
-
-1. In the left menu, click **Subnets** -> **Create subnet**.
-2. Choose your VPC: `acme-dev-vpc`.
-3. Subnet name: `acme-dev-public-1a`.
-4. Availability Zone: pick the first in the list.
-5. IPv4 CIDR: `10.0.1.0/24`.
-6. Click **Create subnet**.
-7. Select the subnet -> click **Actions** -> **Edit subnet settings**.
-8. Enable **Auto-assign public IPv4 address** -> **Save**.
-
-✅ **Expected result:** Subnet is created and auto-assign public IP is enabled.
-
-Create Internet Gateway:
-
-1. Left menu -> **Internet Gateways** -> **Create internet gateway**.
-2. Name: `acme-dev-igw`.
-3. Click **Create internet gateway**.
-4. Click **Actions** -> **Attach to VPC** -> select `acme-dev-vpc`.
-
-✅ **Expected result:** Internet Gateway is attached.
-
-Create Route Table:
-
-1. Left menu -> **Route Tables** -> select the main route table for your VPC.
-2. Click **Routes** tab -> **Edit routes** -> **Add route**.
-3. Destination: `0.0.0.0/0`.
-4. Target: select your Internet Gateway `acme-dev-igw`.
-5. Save changes.
-6. Click **Subnet associations** -> **Edit subnet associations**.
-7. Select `acme-dev-public-1a` -> **Save**.
-
-✅ **Expected result:** Subnet is associated and has internet access.
-
----
-
-### Step 11: Create a Security Group (Firewall)
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. In EC2, click **Security Groups** (left menu).
-2. Click **Create security group**.
-3. Name: `acme-dev-sg`.
-4. Description: `Security group for acme dev app`.
-5. VPC: select `acme-dev-vpc`.
-6. Add inbound rules:
-   - SSH: TCP 22, Source: **My IP**
-   - HTTP: TCP 80, Source: **0.0.0.0/0**
-   - HTTPS: TCP 443, Source: **0.0.0.0/0**
-   - App port: TCP 3000, Source: **0.0.0.0/0**
-7. Click **Create security group**.
-
-✅ **Expected result:** Security group exists with four inbound rules.
-
-❌ **Common error:** SSH from anywhere (`0.0.0.0/0`).
-- **Fix:** Restrict SSH to **My IP** only.
-
----
-
-### Step 12: Launch an EC2 Instance
-
-Where: **AWS Console**
-
-Micro-steps:
-
-1. In EC2, click **Instances** -> **Launch instances**.
-2. Name: `acme-dev-ec2`.
-3. AMI: **Amazon Linux 2023** (Free tier eligible).
-4. Instance type: **t3.micro**.
-5. Key pair: select `acme-dev-keypair`.
-6. Network settings -> **Edit**:
-   - VPC: `acme-dev-vpc`
-   - Subnet: `acme-dev-public-1a`
-   - Auto-assign public IP: **Enable**
-   - Security group: select `acme-dev-sg`
-7. Storage: set to **20 GiB gp3**.
-8. Click **Launch instance**.
-
-✅ **Expected result:** Instance state becomes **running** and shows a public IPv4 address.
-
----
-
-### Step 13: Connect to the Server (SSH)
-
-Where: **Your laptop terminal**
-
-Micro-steps:
-
-1. In EC2, select your instance.
-2. Copy the **Public IPv4 address**.
-3. Run the command below (replace the IP with your actual IP).
-
-macOS/Linux:
-
-```bash
-ssh -i "~/Downloads/acme-dev-keypair.pem" ec2-user@12.34.56.78
-```
-
-Windows PowerShell:
-
-Replace `YOUR_NAME` with your Windows username.
-
-```powershell
-ssh -i "C:\Users\YOUR_NAME\Downloads\acme-dev-keypair.pem" ec2-user@12.34.56.78
-```
-
-If asked **"Are you sure you want to continue connecting?"** type `yes` and press Enter.
-
-✅ **Expected result:** You see a prompt like `[ec2-user@ip-10-0-1-42 ~]$`.
-
-❌ **Common error:** `Permission denied (publickey)`.
-- **Fix:** Ensure the key path is correct and permissions are set to 400.
-
----
-
-### Step 14: Install Dependencies (Node.js + Nginx)
-
-Where: **EC2 server (SSH session)**
-
-Amazon Linux 2023:
-
-```bash
+# Update the system
 sudo dnf update -y
-sudo dnf install -y git curl unzip jq nginx
+
+# Install Node Version Manager (NVM)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Reload terminal settings
 source ~/.bashrc
-nvm install 20
-nvm use 20
-npm install -g pm2
-sudo systemctl start nginx
-sudo systemctl enable nginx
+
+# Install Node.js (Version 22)
+nvm install 22
+
+# Verify
+node -v
 ```
 
-✅ **Expected result:** `node -v` shows v20.x.x and `nginx` is running.
+#### 6.2 Install Git & PM2
+```bash
+# Install Git
+sudo dnf install git -y
+
+# Install PM2 (Keeps your app running 24/7)
+npm install -g pm2
+```
 
 ---
 
-### Step 15: Deploy a Sample App (Safe Test)
+### <a name="step-7-deploying-the-application-pm2"></a>STEP 7: DEPLOYING THE APPLICATION (PM2)
+*Goal: Get your code live.*
 
-Where: **EC2 server (SSH session)**
-
+#### 7.1 Clone and Start
 ```bash
-mkdir -p ~/apps/acme
-cd ~/apps/acme
-npm init -y
-npm install express
+# Clone your code (Replace with your repo URL)
+git clone https://github.com/your-username/your-repo.git
+cd your-repo
 
-cat > app.js <<'EOF'
-const express = require("express");
-const app = express();
-app.get("/health", (req, res) => res.status(200).send("OK"));
-app.get("/", (req, res) => res.send("Hello from acme-dev"));
-app.listen(3000, "0.0.0.0", () => console.log("App listening on 3000"));
-EOF
+# Install project dependencies
+npm install
 
-pm2 start app.js --name "acme-dev"
+# Start the app with a unique name
+pm2 start index.js --name "myproject-dev-api"
+
+# Make it survive reboots
+pm2 startup
+# (Copy and paste the command PM2 gives you)
 pm2 save
 ```
 
-✅ **Expected result:** `pm2 status` shows `acme-dev` as **online**.
-
-Test locally on the server:
-
-```bash
-curl http://localhost:3000/health
-```
-
-✅ **Expected result:** `OK`
+💡 **Tip:** Use `pm2 status` to see if your app is running. Use `pm2 logs` to see errors.
 
 ---
 
-### Step 16: Configure Nginx Reverse Proxy
+### <a name="step-8-domain-ssl-setup-https"></a>STEP 8: DOMAIN & SSL SETUP (HTTPS)
+*Goal: Make your app accessible via https://myapp.com.*
 
-Where: **EC2 server (SSH session)**
+#### 8.1 Register Domain (Route 53)
+1. Search **"Route 53"** → **Registered Domains** → **Register Domain**.
+2. Follow prompts to buy a domain (e.g., `mycoolapp.com`).
 
-```bash
-sudo tee /etc/nginx/conf.d/acme-dev.conf > /dev/null <<'EOF'
-server {
-    listen 80;
-    server_name _;
+#### 8.2 Get SSL Certificate (ACM)
+1. Search **"Certificate Manager"** → **Request Certificate**.
+2. **Domain name:** `*.mycoolapp.com` and `mycoolapp.com`.
+3. Select **"DNS Validation"**.
+4. Once requested, click **"Create records in Route 53"** to verify ownership.
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-EOF
-
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-✅ **Expected result:** `nginx -t` shows syntax OK and Nginx reloads successfully.
-
-Test from your laptop:
-
-Replace the IP with your EC2 public IP.
-
-```bash
-curl http://12.34.56.78/
-```
-
-✅ **Expected result:** `Hello from acme-dev`
+#### 8.3 Setup Load Balancer (ALB)
+*Follow Part II, Section 9.5 for detailed Load Balancer setup to connect your SSL to your EC2 instance.*
 
 ---
 
-### Step 17: Domain + HTTPS (Optional but Recommended)
+### <a name="step-9-basic-cicd-github-actions"></a>STEP 9: BASIC CI/CD (GITHUB ACTIONS)
+*Goal: Automatically update your server when you push to GitHub.*
 
-If you have a domain, point it to your EC2 public IP using Route 53 or your DNS provider.
-
-Route 53 (Console):
-
-1. Open **Route 53** -> **Hosted zones** -> **Create hosted zone**.
-2. Enter your domain (example: `example.com`).
-3. Create an **A record** pointing to your EC2 public IP.
-
-HTTPS with Certbot (EC2 server):
-
-Replace `example.com` with your domain name.
-
-```bash
-sudo dnf install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d example.com
-sudo systemctl status certbot.timer
-```
-
-✅ **Expected result:** `certbot` reports certificate success and auto-renewal timer is active.
-
-❌ **Common error:** DNS not propagated.
-- **Fix:** Wait 5-30 minutes and retry `certbot`.
-
----
-
-### Step 18: Basic CI/CD (Minimal GitHub Actions)
-
-Where: **Your GitHub repository**
-
-Micro-steps:
-
-1. Create a file at `.github/workflows/deploy.yml`.
-2. Paste the workflow below.
-3. In GitHub -> **Settings** -> **Secrets and variables** -> **Actions**, add:
-   - `EC2_HOST` = your EC2 public IP
-   - `EC2_USER` = `ec2-user`
-   - `EC2_KEY` = your private key contents
-
-Workflow file (copy-paste):
-
+1. In your GitHub repo, go to **Settings** → **Secrets and variables** → **Actions**.
+2. Add these secrets:
+   - `AWS_ACCESS_KEY_ID`: Your IAM user key.
+   - `AWS_SECRET_ACCESS_KEY`: Your IAM secret key.
+   - `SSH_PRIVATE_KEY`: The contents of your `.pem` file.
+3. Create a file in your repo: `.github/workflows/deploy.yml`:
 ```yaml
-name: Deploy
-on:
-  push:
-    branches: [ "main" ]
-
+name: Deploy to AWS
+on: [push]
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install deps
-        run: npm ci
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+      - name: SSH and Deploy
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ec2-user
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/apps/acme
-            git pull
-            npm ci --production
-            pm2 restart acme-dev
+            cd your-repo
+            git pull origin main
+            npm install
+            pm2 reload myproject-dev-api
 ```
 
-✅ **Expected result:** A push to `main` triggers deployment and PM2 restarts the app.
+---
+
+### <a name="step-10-monitoring-logging"></a>STEP 10: MONITORING & LOGS
+*Goal: Know when things break before your users do.*
+
+1. Search **"CloudWatch"**.
+2. Click **"Alarms"** → **"Create alarm"**.
+3. Select metric: **EC2** → **Per-Instance Metrics** → **CPUUtilization**.
+4. Set threshold to **80%**.
+5. Set notification to your email.
+
+✅ **Success:** You will now get an email if your server is struggling.
 
 ---
 
-### Step 19: Monitoring and Logs (Basic)
+### ✅ FINAL VALIDATION CHECKLIST
 
-Where: **EC2 server + AWS Console**
-
-EC2 server quick checks:
-
-```bash
-pm2 status
-pm2 logs --lines 20
-sudo systemctl status nginx
-```
-
-CloudWatch CPU alarm (Console):
-
-1. Open **CloudWatch** -> **Alarms** -> **Create alarm**.
-2. Select **EC2** metric -> **CPUUtilization** for your instance.
-3. Threshold: `70%` for 5 minutes.
-4. Add your email as notification.
-
-✅ **Expected result:** Alarm shows as **OK** and you receive emails if CPU spikes.
+- [ ] **Naming:** All resources start with `project-env-`?
+- [ ] **Isolation:** Is the VPC dedicated to this project only?
+- [ ] **MFA:** Is MFA enabled on Root and IAM users?
+- [ ] **Security:** Is port 22 restricted to your IP only (or using SSM)?
+- [ ] **Survival:** Does the app auto-start on server reboot (`pm2 save`)?
+- [ ] **Backup:** Is the `.pem` key stored in a safe password manager?
 
 ---
 
-### Step 20: Zero-Downtime Rule (Shared Accounts)
+## 📘 PART II: ADVANCED ARCHITECTURAL REFERENCE
 
-If this account hosts other projects, follow these rules:
+## Table of Contents
 
-- Use a new port (3001, 3002, 4000, etc.).
-- Create a new Nginx config file (do not edit existing files).
-- Use `sudo systemctl reload nginx` (never `restart`).
-- Never run `pm2 restart all` or `pm2 delete all`.
-
-✅ **Expected result:** Your changes do not affect other apps.
-
----
-
-### Final Validation Checklist
-
-Use this checklist before you declare success:
-
-- [ ] EC2 instance is running
-- [ ] Security group allows only required ports
-- [ ] App responds to `/health`
-- [ ] Nginx proxy works over HTTP
-- [ ] HTTPS works (if domain configured)
-- [ ] PM2 shows app online
-- [ ] CloudWatch alarm configured
-- [ ] Billing alerts configured
-- [ ] No existing resources were modified
-
----
-
-Advanced reference and deep dives begin below.
-
-## 0. Prerequisites & Environment Setup
-
-### Purpose
-
-This section ensures that you have a working AWS account, a configured local terminal, and all the tools needed to follow every command in this playbook. **If you skip this section, nothing else in this document will work.**
-
-### What You Will Achieve
-
-By the end of this section, you will have:
-
-- A clear mental model of the AWS Console layout and region/account scope
-- A live AWS account with billing configured
-- The AWS CLI installed and authenticated on your local machine
-- An SSH key pair for connecting to EC2 instances
-- A baseline safety protocol for shared accounts (do-not-touch rules and pre-flight audit)
-- All essential CLI tools installed (`jq`, `git`, `curl`)
-
-### Step-by-Step Implementation
-
-1. Review the AWS Console orientation and region/account context (Section 0.0).
-2. Create or access your AWS account (Section 0.1).
-3. Install the AWS CLI on your local machine (Section 0.2).
-4. Configure credentials so the CLI can authenticate (Section 0.3).
-5. Create and secure your SSH key pair (Section 0.4).
-6. If the account already has resources, follow the do-not-touch protocol (Section 0.5) and run the pre-flight audit (Section 0.6).
-7. Install baseline tools used later in the playbook (Section 0.11).
-
-### Commands
-
-All required commands are included inline in Sections 0.2 through 0.11. Copy them exactly as shown.
-
-### Validation
-
-Run the validation snippets after each step. At minimum, confirm:
-
-- `aws --version` works
-- `aws sts get-caller-identity` returns your account
-- Your `.pem` file exists and has restricted permissions
-
-### Common Errors
-
-- CLI not on PATH after install (fix: close and reopen terminal).
-- Invalid Access Key or Secret (fix: re-run `aws configure` and paste carefully).
-- SSH key permissions too open (fix: `chmod 400 key.pem`).
-
-### Pro Tips
-
-- Set billing protection early (see Section 0.9).
-- Choose a primary region and stick to it.
-- Store your `.pem` file in a secure password manager.
+| #     | Section                                                                                   | What You Will Learn                                                   |
+| ----- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Start | [🏆 Part I: Foolproof Master Guide](#🏆-part-i-the-foolproof-master-guide) | Full A-Z walkthrough for freshers |
+| 0.0   | [AWS Console Orientation](#00-aws-console-orientation)                                    | Console layout, regions, account context                              |
+| 0.1   | [Creating an AWS Account](#01-creating-an-aws-account-first-time-setup)                   | Root account setup and safety                                         |
+| 0.2   | [Installing the AWS CLI](#02-installing-the-aws-cli)                                      | CLI installation on Windows, macOS, and Linux                         |
+| 0.3   | [Configuring AWS CLI Credentials](#03-configuring-aws-cli-credentials)                    | Access keys, profiles, validation                                     |
+| 0.4   | [Creating an SSH Key Pair](#04-creating-an-ssh-key-pair)                                  | SSH keys, permissions, key safety                                     |
+| 0.5   | [Do Not Touch Existing Resources](#05-do-not-touch-existing-resources)                    | Safe-change protocol for shared accounts                              |
+| 0.6   | [Pre-Flight Audit](#06-pre-flight-audit)                                                  | Baseline inventory before creating anything                           |
+| 0.8   | [New Project Isolation Protocol](#08-new-project-isolation-protocol)                      | VPC/SG isolation, naming, port strategy                               |
+| 0.9   | [Billing Protection](#09-billing-protection)                                              | Budgets, Free Tier, anomaly alerts                                    |
+| 0.10  | [New Developer Onboarding](#010-new-developer-onboarding)                                 | Join an existing account safely                                       |
+| 0.11  | [Installing Essential Tools](#011-installing-essential-tools)                             | jq, git, curl                                                         |
+| 1     | [Introduction and Architectural Philosophy](#1-introduction-and-architectural-philosophy) | Why this playbook exists, who should use it, scope and philosophy     |
+| 2     | [Scenario-Based Entry & Decision Logic](#2-scenario-based-entry--decision-logic)          | How to classify your engagement: Greenfield, Brownfield, or Black Box |
+| 3     | [AWS Account & Security (IAM)](#3-aws-account--security-iam)                              | Root account lockdown, IAM Users/Roles/Policies, MFA, secrets         |
+| 4     | [AWS Networking (VPC, Subnets, Routing)](#4-aws-networking-vpc-subnets-routing)           | VPC creation, public/private subnets, IGW, NAT Gateway, routing       |
+| 5     | [EC2 Setup & Compute Strategy](#5-ec2-setup--compute-strategy)                            | Instance types, AMI selection, SSH, Node.js, Nginx setup              |
+| 6     | [S3 Storage & Bucket Management](#6-s3-storage--bucket-management)                        | Bucket creation, permissions, signed URLs, static hosting             |
+| 7     | [Database Strategy (RDS & Alternatives)](#7-database-strategy-rds--alternatives)          | RDS provisioning, backups, read replicas, scaling                     |
+| 8     | [Project Deployment (Backend + Frontend)](#8-project-deployment-backend--frontend)        | Node.js/PM2, React/Nginx/S3, secrets, deployment runbook              |
+| 9     | [Scaling Strategies (Vertical & Horizontal)](#9-scaling-strategies-vertical--horizontal)  | Auto Scaling Groups, ALB, target tracking policies                    |
+| 10    | [CI/CD Pipeline](#10-cicd-pipeline)                                                       | GitHub Actions, Build→Test→Deploy, Rolling & Blue-Green deployment    |
+| 11    | [Monitoring & Logging](#11-monitoring--logging)                                           | CloudWatch metrics, logs, alarms, dashboards, structured logging      |
+| 12    | [Advanced Security Practices](#12-advanced-security-practices)                            | Least privilege, Secrets Manager lifecycle, WAF, GuardDuty, breaches  |
+| 13    | [Troubleshooting Guide](#13-troubleshooting-guide)                                        | SSH issues, port diagnostics, PM2 debugging, 60-second triage         |
+| 14    | [Running Node.js on AWS at Scale](#chapter-14-running-nodejs-on-aws-at-scale)             | Stateless services, session storage, scaling patterns, cost controls  |
+| 15    | [Production Readiness Checklist](#production-readiness-checklist)                         | Final go-live checklist before production launch                      |
 
 ---
 
-### 0.0 AWS Console Orientation
+
+## <a name="0-prerequisites--environment-setup"></a>0. Prerequisites & Environment Setup
+
+### <a name="00-aws-console-orientation"></a>0.0 AWS Console Orientation
 
 If you are new to AWS, learn the console layout before creating resources. Most early mistakes happen because of the wrong region or the wrong account.
 
@@ -773,7 +392,7 @@ Validation: You can identify the region and Account ID in the top-right menu and
 
 ---
 
-### 0.1 Creating an AWS Account (First-Time Setup)
+### <a name="01-creating-an-aws-account-first-time-setup"></a>0.1 Creating an AWS Account (First-Time Setup)
 
 > **If you already have an AWS account, skip to Section 0.2.**
 
@@ -810,7 +429,7 @@ The Root User email and password grant **absolute, irrevocable control** over th
 
 ---
 
-### 0.2 Installing the AWS CLI
+### <a name="02-installing-the-aws-cli"></a>0.2 Installing the AWS CLI
 
 The AWS Command Line Interface (CLI) is the tool that lets you manage AWS resources from your terminal. Every `aws` command in this playbook requires it.
 
@@ -1083,261 +702,6 @@ If any command fails with `AccessDenied`, request the `SecurityAudit` and `ViewB
 
 ---
 
-### 0.7 Quick Deployment Runbook (A → Z)
-
-Use this only for a new project where you have explicit permission to create new resources. If the account already hosts workloads, complete Section 0.5 and Section 0.6 first, and follow the isolation protocol in Section 0.8.
-
-This is the fastest safe path from a blank AWS account to a live HTTPS Node.js app. It is intentionally explicit and beginner-friendly. Every step is executable.
-
-### Step 1: Create the AWS Account
-
-1. Go to **https://aws.amazon.com/** → **Create an AWS Account**.
-2. Use a dedicated root email (not personal), set a strong password, and add a credit card.
-3. Choose the **Basic Support Plan**.
-4. Log in at **https://console.aws.amazon.com/** and confirm you can see the AWS Console.
-
-_Validation:_ You can open the AWS Console and see your account ID in the top-right dropdown.
-
-### Step 2: Setup IAM + AWS CLI + MFA
-
-1. Enable MFA on the Root account (IAM → Security credentials → MFA).
-2. Create an IAM Admin user (IAM → Users → Create user → attach `AdministratorAccess`).
-3. Create Access Keys for the IAM Admin user (Security credentials → Create access key).
-4. Install AWS CLI and configure credentials:
-
-```bash
-aws configure
-aws sts get-caller-identity
-```
-
-_Validation:_ `aws sts get-caller-identity` returns your account and IAM user ARN.
-
-### Step 3: Create the VPC (Networking Baseline)
-
-**Beginner path (Console):**
-
-1. AWS Console → **VPC** → **Create VPC** → **VPC and more**.
-2. Name: `prod-vpc`, IPv4 CIDR: `10.0.0.0/16`.
-3. AZs: 2, Public subnets: 2, Private subnets: 2.
-4. NAT Gateway: **1 per AZ** (or 1 total for cost control).
-5. Click **Create VPC**.
-
-> ⚠️ Cost Warning: NAT Gateways are billed per hour and per GB. For low-traffic dev environments, avoid NAT or use VPC Endpoints for S3/DynamoDB to reduce spend.
-
-_Validation:_ You can see public and private subnets in the VPC Console.
-
-### Step 4: Launch EC2 (Key Pair + Security Group + Instance)
-
-Create the SSH key pair and security group (CLI):
-
-```bash
-# Key pair
-aws ec2 create-key-pair \
-  --key-name prod-ssh-keypair \
-  --query 'KeyMaterial' \
-  --output text > prod-ssh-keypair.pem
-chmod 400 prod-ssh-keypair.pem
-
-# Security group
-aws ec2 create-security-group \
-  --group-name prod-app-sg \
-  --description "Prod app SG" \
-  --vpc-id vpc-0abcd1234
-
-# SSH (22) from your IP
-aws ec2 authorize-security-group-ingress \
-  --group-id sg-0abc1234def56789 \
-  --protocol tcp \
-  --port 22 \
-  --cidr YOUR_PUBLIC_IP/32
-
-# HTTP (80) and HTTPS (443) from the internet
-aws ec2 authorize-security-group-ingress \
-  --group-id sg-0abc1234def56789 \
-  --protocol tcp \
-  --port 80 \
-  --cidr 0.0.0.0/0
-
-aws ec2 authorize-security-group-ingress \
-  --group-id sg-0abc1234def56789 \
-  --protocol tcp \
-  --port 443 \
-  --cidr 0.0.0.0/0
-```
-
-Launch the instance (CLI):
-
-```bash
-aws ec2 run-instances \
-  --image-id ami-0abcdef1234567890 \
-  --instance-type t3.micro \
-  --key-name prod-ssh-keypair \
-  --subnet-id subnet-public-1a \
-  --security-group-ids sg-0abc1234def56789 \
-  --associate-public-ip-address \
-  --count 1
-
-# Allocate an Elastic IP (stable public IP for DNS)
-aws ec2 allocate-address --domain vpc
-
-# Associate the Elastic IP to the instance
-# Replace INSTANCE_ID and EIP_ALLOCATION_ID with real values
-aws ec2 associate-address \
-  --instance-id i-0123456789abcdef0 \
-  --allocation-id eipalloc-0123456789abcdef0
-```
-
-_Validation:_ `aws ec2 describe-instances` shows the instance in `running` state with a public IP.
-
-### Step 5: SSH into the Server
-
-```bash
-ssh -i prod-ssh-keypair.pem ec2-user@PUBLIC_IP
-```
-
-_Validation:_ You see a shell prompt on the instance and `hostname` returns the EC2 host.
-
-### Step 6: Install Dependencies (OS + Node + Nginx)
-
-Amazon Linux 2023:
-
-```bash
-sudo dnf update -y
-sudo dnf install -y git curl unzip jq nginx
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc
-nvm install --lts --latest-npm
-node -v
-npm -v
-
-# Optional: update npm to the latest stable version
-npm install -g npm@latest
-npm install -g pm2
-pm2 -v
-```
-
-Ubuntu 24.04:
-
-```bash
-sudo apt-get update -y
-sudo apt-get install -y git curl unzip jq nginx
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc
-nvm install --lts --latest-npm
-node -v
-npm -v
-npm install -g pm2
-pm2 -v
-```
-
-### Step 7: Deploy the Backend
-
-```bash
-cd /opt
-sudo mkdir -p apps
-sudo chown $USER:$USER apps
-cd apps
-git clone https://github.com/your-org/your-app.git
-cd your-app
-npm ci --production
-npm run build
-```
-
-### Step 8: Configure Nginx (Reverse Proxy)
-
-```bash
-sudo tee /etc/nginx/conf.d/app.conf > /dev/null <<'EOF'
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-    }
-}
-EOF
-
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-Note: Use `reload` to avoid downtime on shared hosts. Avoid `restart` unless you are the only tenant on the server.
-
-### Step 9: Setup Domain + DNS (Route 53)
-
-1. Route 53 → **Hosted zones** → **Create hosted zone** for `yourdomain.com`.
-2. If your domain is registered elsewhere, update the domain registrar to use the Route 53 name servers.
-3. Add an **A record** pointing to your EC2 **Elastic IP**.
-4. If you use an external DNS provider instead of Route 53, create the same **A record** there.
-
-CLI alternative:
-
-```bash
-aws route53 create-hosted-zone \
-  --name yourdomain.com \
-  --caller-reference "prod-$(date +%Y%m%d%H%M%S)"
-
-cat > /tmp/route53-record.json <<'EOF'
-{
-  "Comment": "A record for EC2",
-  "Changes": [{
-    "Action": "UPSERT",
-    "ResourceRecordSet": {
-      "Name": "yourdomain.com",
-      "Type": "A",
-      "TTL": 300,
-      "ResourceRecords": [{"Value": "YOUR_ELASTIC_IP"}]
-    }
-  }]
-}
-EOF
-
-aws route53 change-resource-record-sets \
-  --hosted-zone-id ZONE_ID_HERE \
-  --change-batch file:///tmp/route53-record.json
-```
-
-_Validation:_ `dig +short yourdomain.com` returns your public IP.
-
-### Step 10: Enable HTTPS (SSL)
-
-```bash
-# Ubuntu/Debian
-sudo apt install certbot python3-certbot-nginx -y
-
-# Amazon Linux 2023
-sudo dnf install certbot python3-certbot-nginx -y
-
-sudo certbot --nginx -d yourdomain.com
-
-# Ensure auto-renewal is active (systemd timer)
-sudo systemctl status certbot.timer
-```
-
-_Validation:_ `sudo certbot renew --dry-run` succeeds.
-
-### Step 11: Start the Application (PM2)
-
-```bash
-pm2 start app.js --name my-app
-pm2 save
-pm2 startup
-pm2 logs
-```
-
-### Step 12: Verify the Live System
-
-```bash
-curl -I https://yourdomain.com
-pm2 status
-sudo systemctl status nginx
-```
-
-_Validation:_ `curl` returns HTTP 200 or 301/302 to HTTPS and `pm2 status` shows `online`.
-
 ---
 
 ### 0.8 New Project Isolation Protocol
@@ -1366,12 +730,12 @@ Rules: lowercase only, hyphens only, and always include the environment.
 
 #### VPC CIDR Allocation
 
-| Slot | CIDR Block | Intended Use |
-| --- | --- | --- |
-| 1 | `10.0.0.0/16` | First project |
-| 2 | `10.1.0.0/16` | Second project |
-| 3 | `10.2.0.0/16` | Third project |
-| 4 | `10.3.0.0/16` | Fourth project |
+| Slot | CIDR Block    | Intended Use   |
+| ---- | ------------- | -------------- |
+| 1    | `10.0.0.0/16` | First project  |
+| 2    | `10.1.0.0/16` | Second project |
+| 3    | `10.2.0.0/16` | Third project  |
+| 4    | `10.3.0.0/16` | Fourth project |
 
 #### Port Isolation (Shared Hosts)
 
@@ -1427,11 +791,11 @@ Avoid `pm2 restart all`, `pm2 stop all`, and `pm2 delete all` on shared servers.
 
 Always maintain three separate environments, each isolated from the others.
 
-| Environment | Purpose | Scale | Data | Access |
-| --- | --- | --- | --- | --- |
-| Dev | Experiment freely, break things | Small (t3.micro) | Fake test data only | All developers |
-| Staging | Final QA before production | Same as production | Anonymized copy of prod | QA + senior devs |
-| Production | Real users and real data | Production size | Real customer data | Senior DevOps only |
+| Environment | Purpose                         | Scale              | Data                    | Access             |
+| ----------- | ------------------------------- | ------------------ | ----------------------- | ------------------ |
+| Dev         | Experiment freely, break things | Small (t3.micro)   | Fake test data only     | All developers     |
+| Staging     | Final QA before production      | Same as production | Anonymized copy of prod | QA + senior devs   |
+| Production  | Real users and real data        | Production size    | Real customer data      | Senior DevOps only |
 
 Golden rule:
 
@@ -1457,13 +821,13 @@ Do this immediately after account creation or before provisioning non-free resou
 
 Free Tier quick limits (first 12 months):
 
-| Service | Free Tier Limit | Exceeds When |
-| --- | --- | --- |
-| EC2 | 750 hours/month of t2.micro or t3.micro | More than 750 hours total across instances |
-| S3 | 5 GB storage, 20,000 GET requests | Storage > 5 GB or high request volume |
-| RDS | 750 hours/month of db.t2.micro or db.t3.micro | Larger instance sizes or Multi-AZ |
-| Lambda | 1 million requests/month | More than 1 million requests |
-| Data transfer | 1 GB out per month | More than 1 GB outbound data |
+| Service       | Free Tier Limit                               | Exceeds When                               |
+| ------------- | --------------------------------------------- | ------------------------------------------ |
+| EC2           | 750 hours/month of t2.micro or t3.micro       | More than 750 hours total across instances |
+| S3            | 5 GB storage, 20,000 GET requests             | Storage > 5 GB or high request volume      |
+| RDS           | 750 hours/month of db.t2.micro or db.t3.micro | Larger instance sizes or Multi-AZ          |
+| Lambda        | 1 million requests/month                      | More than 1 million requests               |
+| Data transfer | 1 GB out per month                            | More than 1 GB outbound data               |
 
 Note: Free Tier applies per account, not per project.
 
@@ -2996,8 +2360,10 @@ aws ec2 describe-security-groups \
 7. **Inbound rules:** Click **"Add rule"**:
    - **Rule 1:** Type: `SSH`, Source: `My IP` (auto-fills your IP)
    - **Rule 2:** Type: `HTTP`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
-  - **Rule 3:** Type: `HTTPS`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
-  - **Rule 4:** Type: `Custom TCP`, Port: `3000`, Source: `10.0.0.0/16`
+
+- **Rule 3:** Type: `HTTPS`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
+- **Rule 4:** Type: `Custom TCP`, Port: `3000`, Source: `10.0.0.0/16`
+
 8. **Outbound rules:** Leave as default (Allow all).
 9. Click **"Create security group"**.
 
@@ -8201,9 +7567,9 @@ ISOLATION (FOR SHARED ACCOUNTS)
 
 ### Go-Live Decision Matrix
 
-| Status | Decision |
-| --- | --- |
-| All checkboxes checked | Safe to go live |
-| 1-3 minor items unchecked (non-security) | Go live with a documented remediation plan |
-| Any security item unchecked | Do not go live |
-| Any isolation item unchecked | Do not go live (risk of impacting existing systems) |
+| Status                                   | Decision                                            |
+| ---------------------------------------- | --------------------------------------------------- |
+| All checkboxes checked                   | Safe to go live                                     |
+| 1-3 minor items unchecked (non-security) | Go live with a documented remediation plan          |
+| Any security item unchecked              | Do not go live                                      |
+| Any isolation item unchecked             | Do not go live (risk of impacting existing systems) |
