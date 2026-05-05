@@ -2,12 +2,28 @@
 
 ---
 
+How to use this playbook:
+
+- If you are new, read in order from Section 0.0.
+- Every step includes a Validation or Expected Result. If you cannot confirm it, stop and resolve before moving on.
+
 ## Table of Contents
 
-| #   | Section                                                                                   | What You Will Learn                                                     |
+| #    | Section                                                                                   | What You Will Learn                                                     |
 | --- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 0   | [Prerequisites & Environment Setup](#0-prerequisites--environment-setup)                  | Create AWS account, install CLI, configure credentials, create SSH keys |
-| 0.7 | [Quick Deployment Runbook (A → Z)](#quick-deployment-runbook-a--z)                        | Full A → Z deployment flow for beginners                               |
+| 0.0 | [AWS Console Orientation](#00-aws-console-orientation)                                    | Console layout, regions, account context                                |
+| 0.1 | [Creating an AWS Account](#01-creating-an-aws-account-first-time-setup)                   | Root account setup and safety                                           |
+| 0.2 | [Installing the AWS CLI](#02-installing-the-aws-cli)                                      | CLI installation on Windows, macOS, and Linux                           |
+| 0.3 | [Configuring AWS CLI Credentials](#03-configuring-aws-cli-credentials)                    | Access keys, profiles, validation                                       |
+| 0.4 | [Creating an SSH Key Pair](#04-creating-an-ssh-key-pair)                                  | SSH keys, permissions, key safety                                       |
+| 0.5 | [Do Not Touch Existing Resources](#05-do-not-touch-existing-resources)                    | Safe-change protocol for shared accounts                                |
+| 0.6 | [Pre-Flight Audit](#06-pre-flight-audit)                                                  | Baseline inventory before creating anything                             |
+| 0.7 | [Quick Deployment Runbook (A → Z)](#07-quick-deployment-runbook-a--z)                     | End-to-end deployment flow                                              |
+| 0.8 | [New Project Isolation Protocol](#08-new-project-isolation-protocol)                      | VPC/SG isolation, naming, port strategy                                 |
+| 0.9 | [Billing Protection](#09-billing-protection)                                              | Budgets, Free Tier, anomaly alerts                                      |
+| 0.10 | [New Developer Onboarding](#010-new-developer-onboarding)                                | Join an existing account safely                                         |
+| 0.11 | [Installing Essential Tools](#011-installing-essential-tools)                            | jq, git, curl                                                           |
+| 0.12 | [Pro Tips for Beginners](#012-pro-tips-for-beginners)                                    | Early guardrails and habits                                             |
 | 1   | [Introduction and Architectural Philosophy](#1-introduction-and-architectural-philosophy) | Why this playbook exists, who should use it, scope and philosophy       |
 | 2   | [Scenario-Based Entry & Decision Logic](#2-scenario-based-entry--decision-logic)          | How to classify your engagement: Greenfield, Brownfield, or Black Box   |
 | 3   | [AWS Account & Security (IAM)](#3-aws-account--security-iam)                              | Root account lockdown, IAM Users/Roles/Policies, MFA, secrets           |
@@ -36,22 +52,26 @@ This section ensures that you have a working AWS account, a configured local ter
 
 By the end of this section, you will have:
 
+- A clear mental model of the AWS Console layout and region/account scope
 - A live AWS account with billing configured
 - The AWS CLI installed and authenticated on your local machine
 - An SSH key pair for connecting to EC2 instances
+- A baseline safety protocol for shared accounts (do-not-touch rules and pre-flight audit)
 - All essential CLI tools installed (`jq`, `git`, `curl`)
 
 ### Step-by-Step Implementation
 
-1. Create or access your AWS account (Section 0.1).
-2. Install the AWS CLI on your local machine (Section 0.2).
-3. Configure credentials so the CLI can authenticate (Section 0.3).
-4. Create and secure your SSH key pair (Section 0.4).
-5. Install baseline tools used later in the playbook (Section 0.5).
+1. Review the AWS Console orientation and region/account context (Section 0.0).
+2. Create or access your AWS account (Section 0.1).
+3. Install the AWS CLI on your local machine (Section 0.2).
+4. Configure credentials so the CLI can authenticate (Section 0.3).
+5. Create and secure your SSH key pair (Section 0.4).
+6. If the account already has resources, follow the do-not-touch protocol (Section 0.5) and run the pre-flight audit (Section 0.6).
+7. Install baseline tools used later in the playbook (Section 0.11).
 
 ### Commands
 
-All required commands are included inline in Sections 0.2 through 0.5. Copy them exactly as shown.
+All required commands are included inline in Sections 0.2 through 0.11. Copy them exactly as shown.
 
 ### Validation
 
@@ -69,9 +89,50 @@ Run the validation snippets after each step. At minimum, confirm:
 
 ### Pro Tips
 
-- Set a billing alarm early (see Section 3.6).
+- Set billing protection early (see Section 0.9).
 - Choose a primary region and stick to it.
 - Store your `.pem` file in a secure password manager.
+
+---
+
+### 0.0 AWS Console Orientation
+
+If you are new to AWS, learn the console layout before creating resources. Most early mistakes happen because of the wrong region or the wrong account.
+
+Console map (approx):
+
+```
++-----------------------------------------------------------------------+
+| [menu] AWS  Search bar                 Region v  Account v  Bell       |
+|-----------------------------------------------------------------------|
+| Recently Visited Services                                             |
+| [EC2] [IAM] [S3] [RDS]                                                |
+|                                                                       |
+| All Services v                                                        |
++-----------------------------------------------------------------------+
+```
+
+Key elements to locate:
+
+- Search bar (top center): fastest way to open services
+- Region selector (top right): resources are region-scoped; always confirm
+- Account menu (top right): shows the 12-digit Account ID and active role
+- Services menu (top left): full list of services; use search instead
+- Notifications (bell icon): billing and security alerts
+
+Single most important rule: Always confirm the current region and account before creating or modifying resources. Resources are not visible across regions.
+
+Quick glossary (for first-time users):
+
+- Instance: a virtual computer (EC2 instance)
+- AMI: the operating system image used to create an instance
+- Security group: instance firewall rules
+- VPC: your private network inside AWS
+- Subnet: a smaller network inside a VPC
+- IAM: identity and access management
+- S3 bucket: a named container for object storage
+
+Validation: You can identify the region and Account ID in the top-right menu and confirm they match your project.
 
 ---
 
@@ -310,45 +371,84 @@ If you lose the `.pem` file, **there is no way to recover it from AWS.** AWS doe
 
 ---
 
-### 0.5 Installing Essential Tools
+### 0.5 Do Not Touch Existing Resources
 
-Several tools are referenced throughout this playbook. Install them now to avoid interruptions later.
+If this AWS account already contains workloads, follow this protocol before you create or modify anything.
+
+Golden rule: If you did not create it, do not touch it. Create new, isolated resources for every project.
+
+Rules:
+
+1. Identify before touching. Read the name and tags; stop if it is not your project.
+2. Never modify existing VPCs, security groups, EC2 instances, RDS, or S3 buckets. Create new ones.
+3. Use the naming convention in Section 0.8 for every resource you create.
+4. Capture a baseline (screenshots or CLI output) before you start.
+5. Ask when in doubt. A five-minute question prevents a five-hour outage.
+
+Red flags (stop and ask):
+
+- Names containing `prod`, `production`, `live`, or `main`
+- Tag `Environment=Production`
+- Untagged resources or unknown owners
+- Security groups with many inbound rules
+- RDS with Multi-AZ enabled
+- S3 buckets with heavy activity or recent writes
+
+---
+
+### 0.6 Pre-Flight Audit
+
+Run this read-only audit before creating anything in an existing account. Save the output and share it with your team lead.
 
 ```bash
-# jq — JSON processor (used to parse AWS CLI output)
-# macOS:
-brew install jq
-# Ubuntu/Debian:
-sudo apt-get install jq -y
-# Amazon Linux / CentOS:
-sudo dnf install jq -y
-# Windows (via Chocolatey):
-choco install jq -y
+# Save output to a file for later comparison
+# Example: audit-results-YYYY-MM-DD.txt
 
-# git — Version control (used for all code deployments)
-# macOS: (pre-installed, or)
-brew install git
-# Ubuntu/Debian:
-sudo apt-get install git -y
-# Amazon Linux:
-sudo dnf install git -y
+echo "=== 1. IDENTITY CHECK ==="
+aws sts get-caller-identity
 
-# Verify all tools
-aws --version && jq --version && git --version && curl --version | head -1
+echo "=== 2. REGION CHECK ==="
+aws configure get region
+
+echo "=== 3. EC2 INSTANCES ==="
+aws ec2 describe-instances \
+  --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value|[0],InstanceId,InstanceType,State.Name,PrivateIpAddress]' \
+  --output table
+
+echo "=== 4. VPCS ==="
+aws ec2 describe-vpcs \
+  --query 'Vpcs[*].[VpcId,CidrBlock,Tags[?Key==`Name`].Value|[0],IsDefault]' \
+  --output table
+
+echo "=== 5. SECURITY GROUPS ==="
+aws ec2 describe-security-groups \
+  --query 'SecurityGroups[*].[GroupId,GroupName,VpcId]' \
+  --output table
+
+echo "=== 6. S3 BUCKETS ==="
+aws s3 ls
+
+echo "=== 7. RDS INSTANCES ==="
+aws rds describe-db-instances \
+  --query 'DBInstances[*].[DBInstanceIdentifier,DBInstanceClass,Engine,DBInstanceStatus]' \
+  --output table
+
+echo "=== 8. IAM USERS ==="
+aws iam list-users \
+  --query 'Users[*].[UserName,CreateDate,PasswordLastUsed]' \
+  --output table
+
+echo "=== 9. BILLING ALERTS (OPTIONAL) ==="
+aws cloudwatch describe-alarms --output table
 ```
 
----
-
-### 0.6 Pro Tips for Beginners
-
-1. **AWS Free Tier:** New accounts get 12 months of Free Tier, including 750 hours/month of `t2.micro` or `t3.micro` EC2 instances, 5 GB of S3 storage, and 750 hours of RDS `db.t3.micro`. Stay within these limits to avoid charges during learning.
-2. **Set a Billing Alarm Immediately:** Before doing anything else, set a billing alarm (covered in Section 3.6) so you are alerted if costs exceed $5/day. This is your safety net against accidentally leaving expensive resources running.
-3. **Region Matters:** All resources are region-specific. If you create an EC2 instance in `us-east-1` but your Console is set to `us-west-2`, you will not see it. Always check the region selector (top-right of the Console).
-4. **When in Doubt, Don't Delete:** If you are unsure whether a resource is important, **stop it** (to halt billing) rather than **terminate it** (which is irreversible). Stopped EC2 instances do not incur compute charges (but EBS volumes still do).
+If any command fails with `AccessDenied`, request the `SecurityAudit` and `ViewBilling` managed policies before proceeding.
 
 ---
 
-## 🚀 Quick Deployment Runbook (A → Z)
+### 0.7 Quick Deployment Runbook (A → Z)
+
+Use this only for a new project where you have explicit permission to create new resources. If the account already hosts workloads, complete Section 0.5 and Section 0.6 first, and follow the isolation protocol in Section 0.8.
 
 This is the fastest safe path from a blank AWS account to a live HTTPS Node.js app. It is intentionally explicit and beginner-friendly. Every step is executable.
 
@@ -524,8 +624,10 @@ server {
 EOF
 
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl reload nginx
 ```
+
+Note: Use `reload` to avoid downtime on shared hosts. Avoid `restart` unless you are the only tenant on the server.
 
 ### Step 9: Setup Domain + DNS (Route 53)
 
@@ -598,6 +700,206 @@ sudo systemctl status nginx
 ```
 
 _Validation:_ `curl` returns HTTP 200 or 301/302 to HTTPS and `pm2 status` shows `online`.
+
+---
+
+### 0.8 New Project Isolation Protocol
+
+Every new project must be isolated from existing workloads to prevent cross-impact and simplify ownership.
+
+Isolation checklist:
+
+- Dedicated VPC and subnets
+- Dedicated security groups
+- Dedicated compute resources (EC2, ECS, or Lambda)
+- Dedicated IAM role and policies
+- Dedicated S3 buckets and databases
+
+#### Naming Convention
+
+Pattern: `{project}-{environment}-{resource}`
+
+Examples:
+
+- `blog-dev-vpc`
+- `payments-staging-sg`
+- `api-prod-ec2`
+
+Rules: lowercase only, hyphens only, and always include the environment.
+
+#### VPC CIDR Allocation
+
+| Slot | CIDR Block | Intended Use |
+| --- | --- | --- |
+| 1 | `10.0.0.0/16` | First project |
+| 2 | `10.1.0.0/16` | Second project |
+| 3 | `10.2.0.0/16` | Third project |
+| 4 | `10.3.0.0/16` | Fourth project |
+
+#### Port Isolation (Shared Hosts)
+
+Reserved ports: 22 (SSH), 80 (HTTP), 443 (HTTPS)
+
+Suggested app ports: 3000, 3001, 3002, 4000, 4001, 8080
+
+Port allocation reference:
+
+```
+Standard ports (do not use for apps):
+22   -> SSH
+80   -> Nginx HTTP
+443  -> Nginx HTTPS
+
+Suggested app ports:
+3000 -> Project 1
+3001 -> Project 2
+3002 -> Project 3
+4000 -> Project 1 API
+4001 -> Project 2 API
+8080 -> Admin dashboard
+```
+
+Check existing listeners before choosing a port:
+
+```bash
+sudo ss -tlnp | grep LISTEN
+# or
+sudo netstat -tlnp | grep LISTEN
+```
+
+#### Zero-Downtime Changes on Shared Servers
+
+- Create a new Nginx conf file in `/etc/nginx/conf.d/`; do not edit existing conf files.
+- Test and reload configuration changes:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+- Start your app with a unique PM2 name and avoid global operations:
+
+```bash
+pm2 start app.js --name "myapp-dev"
+pm2 status
+```
+
+Avoid `pm2 restart all`, `pm2 stop all`, and `pm2 delete all` on shared servers.
+
+#### Environment Isolation (Dev / Staging / Production)
+
+Always maintain three separate environments, each isolated from the others.
+
+| Environment | Purpose | Scale | Data | Access |
+| --- | --- | --- | --- | --- |
+| Dev | Experiment freely, break things | Small (t3.micro) | Fake test data only | All developers |
+| Staging | Final QA before production | Same as production | Anonymized copy of prod | QA + senior devs |
+| Production | Real users and real data | Production size | Real customer data | Senior DevOps only |
+
+Golden rule:
+
+- Code flows up: Dev -> Staging -> Production
+- Data flows down: Production -> (anonymized copy) -> Staging
+- Production data never goes to Dev
+
+Environment-specific configuration:
+
+```bash
+.env.dev       # Development settings
+.env.staging   # Staging settings
+.env.prod      # Production settings (store in Secrets Manager, not Git)
+```
+
+Never put production credentials in `.env.dev`. A single mistake can cause irreversible data damage.
+
+---
+
+### 0.9 Billing Protection
+
+Do this immediately after account creation or before provisioning non-free resources.
+
+Free Tier quick limits (first 12 months):
+
+| Service | Free Tier Limit | Exceeds When |
+| --- | --- | --- |
+| EC2 | 750 hours/month of t2.micro or t3.micro | More than 750 hours total across instances |
+| S3 | 5 GB storage, 20,000 GET requests | Storage > 5 GB or high request volume |
+| RDS | 750 hours/month of db.t2.micro or db.t3.micro | Larger instance sizes or Multi-AZ |
+| Lambda | 1 million requests/month | More than 1 million requests |
+| Data transfer | 1 GB out per month | More than 1 GB outbound data |
+
+Note: Free Tier applies per account, not per project.
+
+1. Enable IAM access to billing information:
+   - AWS Console -> Account -> "IAM user and role access to Billing information" -> Edit -> Enable
+2. Create a budget:
+   - Billing -> Budgets -> Create budget -> choose "Zero spend" or "Monthly cost"
+3. Add email recipients for alerts.
+
+Optional: Configure Cost Anomaly Detection under Billing to alert on unusual spend spikes.
+
+Validation: You can see the budget in the Billing console and receive alert emails.
+
+Free Tier usage: https://console.aws.amazon.com/billing/home#/freetier
+
+---
+
+### 0.10 New Developer Onboarding
+
+Before you touch an existing AWS account, your team lead must provide:
+
+- IAM username and temporary password
+- Account ID and approved region
+- Naming convention for resources
+- Approved VPCs/subnets for new projects
+- A list of known "do-not-touch" resources
+- The escalation contact for approvals
+
+First steps:
+
+1. Sign in and change your temporary password.
+2. Enable MFA on your IAM user.
+3. Configure the AWS CLI (Section 0.3).
+4. Run the read-only pre-flight audit (Section 0.6).
+5. Confirm which resources you are allowed to create before starting.
+
+---
+
+### 0.11 Installing Essential Tools
+
+Several tools are referenced throughout this playbook. Install them now to avoid interruptions later.
+
+```bash
+# jq — JSON processor (used to parse AWS CLI output)
+# macOS:
+brew install jq
+# Ubuntu/Debian:
+sudo apt-get install jq -y
+# Amazon Linux / CentOS:
+sudo dnf install jq -y
+# Windows (via Chocolatey):
+choco install jq -y
+
+# git — Version control (used for all code deployments)
+# macOS: (pre-installed, or)
+brew install git
+# Ubuntu/Debian:
+sudo apt-get install git -y
+# Amazon Linux:
+sudo dnf install git -y
+
+# Verify all tools
+aws --version && jq --version && git --version && curl --version | head -1
+```
+
+---
+
+### 0.12 Pro Tips for Beginners
+
+1. **AWS Free Tier:** New accounts get 12 months of Free Tier, including 750 hours/month of `t2.micro` or `t3.micro` EC2 instances, 5 GB of S3 storage, and 750 hours of RDS `db.t3.micro`. Stay within these limits to avoid charges during learning.
+2. **Set Billing Protection Immediately:** Before doing anything else, set billing protection (covered in Section 0.9) so you are alerted if costs exceed $5/day. This is your safety net against accidentally leaving expensive resources running.
+3. **Region Matters:** All resources are region-specific. If you create an EC2 instance in `us-east-1` but your Console is set to `us-west-2`, you will not see it. Always check the region selector (top-right of the Console).
+4. **When in Doubt, Don't Delete:** If you are unsure whether a resource is important, **stop it** (to halt billing) rather than **terminate it** (which is irreversible). Stopped EC2 instances do not incur compute charges (but EBS volumes still do).
 
 ## 1. Introduction and Architectural Philosophy
 
@@ -6331,7 +6633,7 @@ Provide a repeatable, layered approach to debugging production issues.
 
 1. Follow the 5-layer diagnostic framework (Section 13.1).
 2. Use the SSH and application issue flowcharts (Sections 13.2 and 13.3).
-3. Apply system-level diagnostics and the 60-second runbook (Sections 13.6 and 13.7).
+3. Apply system-level diagnostics and the 60-second runbook (Sections 13.7 and 13.8).
 
 ### Commands
 
@@ -6605,7 +6907,7 @@ PM2 shows "errored" or "stopped" status
 │
 ├─ Common Error: "ECONNREFUSED 127.0.0.1:5432"
 │   The application cannot connect to the database.
-│   → Jump to Section 13.5 (Dependency Issues).
+│   → Jump to Section 13.6 (Dependency Issues).
 │
 ├─ Common Error: "Error: secretsmanager is not authorized to perform"
 │   The EC2 instance's IAM role does not have permission
@@ -6707,7 +7009,49 @@ ss -tnp | grep $(pgrep -f "node")
 
 ---
 
-### 13.5 Dependency Issues: "The App Runs But Something Is Broken"
+### 13.5 Rollback Procedures
+
+Use these when a change breaks production and you need to return to a known-good state quickly.
+
+Rollback a PM2 application:
+
+```bash
+# Option 1: Git rollback (recent update)
+cd ~/apps/myapp
+git log --oneline -5
+git checkout PREVIOUS_COMMIT_HASH
+pm2 restart myapp-dev
+
+# Option 2: Roll back to a known tag
+git checkout v1.2.3
+npm ci --production
+pm2 restart myapp-dev
+```
+
+Rollback an Nginx config change:
+
+```bash
+# Before changes, keep a backup
+sudo cp /etc/nginx/conf.d/myapp-dev.conf /etc/nginx/conf.d/myapp-dev.conf.bak
+
+# If a reload breaks traffic, restore the backup
+sudo cp /etc/nginx/conf.d/myapp-dev.conf.bak /etc/nginx/conf.d/myapp-dev.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Rollback an EC2 instance type change:
+
+```bash
+aws ec2 stop-instances --instance-ids i-YOURID
+aws ec2 wait instance-stopped --instance-ids i-YOURID
+aws ec2 modify-instance-attribute \
+  --instance-id i-YOURID \
+  --instance-type '{"Value": "t3.micro"}'
+aws ec2 start-instances --instance-ids i-YOURID
+```
+
+### 13.6 Dependency Issues: "The App Runs But Something Is Broken"
 
 The application process is running, the health endpoint returns 200, but specific features are failing. This is Layer 5—external dependency failures.
 
@@ -6770,7 +7114,7 @@ aws iam list-attached-role-policies --role-name $(curl -s http://169.254.169.254
 
 ---
 
-### 13.6 System-Level Diagnostics: The Essential Command Reference
+### 13.7 System-Level Diagnostics: The Essential Command Reference
 
 These commands should be committed to muscle memory. Every engineer troubleshooting a production Linux server will use them in the first 60 seconds.
 
@@ -6870,7 +7214,7 @@ aws ec2 describe-vpc-attribute --vpc-id vpc-0abcd1234 --attribute enableDnsHostn
 
 ---
 
-### 13.7 The 60-Second Production Triage Runbook
+### 13.8 The 60-Second Production Triage Runbook
 
 When you receive a P1 alert at 2 AM and need to assess the situation in under 60 seconds, run these commands in this exact order:
 
@@ -6907,7 +7251,7 @@ After these 8 commands, you should have enough information to determine which la
 
 ---
 
-### 13.8 Real-World Troubleshooting War Stories
+### 13.9 Real-World Troubleshooting War Stories
 
 #### War Story 1: The Phantom Disk Full
 
@@ -7162,17 +7506,67 @@ _Common Errors:_
 - **Token still works after logout:** Redis revoke key not set or TTL calculation wrong.
 - **Unauthorized on all requests:** JWT secret mismatched across instances.
 
-## ✅ Production Readiness Checklist
+## Production Readiness Checklist
 
-- [ ] IAM secured
-- [ ] MFA enabled
-- [ ] Security groups restricted
-- [ ] Domain configured
-- [ ] SSL enabled
-- [ ] App running via PM2
-- [ ] Logs working
-- [ ] Backup configured
-- [ ] Monitoring and alarms configured
-- [ ] Secrets stored in Secrets Manager or SSM
-- [ ] Rollback plan documented and tested
-- [ ] Cost alerts enabled
+Use this checklist before declaring any project production ready.
+
+### Infrastructure Checklist
+
+```
+ACCOUNT AND SECURITY
+[ ] Root account MFA is enabled
+[ ] Root access keys are deleted
+[ ] All IAM users have MFA enabled
+[ ] IAM users have least-privilege permissions
+[ ] CloudTrail is enabled (audit logging)
+[ ] Billing alerts are configured
+
+NETWORKING
+[ ] Dedicated VPC created for this project (not default VPC)
+[ ] Application servers are in private subnets
+[ ] Database is in a private subnet (not publicly accessible)
+[ ] Security groups follow least-privilege
+[ ] SSH port 22 is not open to 0.0.0.0/0
+[ ] HTTPS (port 443) is configured
+
+COMPUTE
+[ ] EC2 instances have descriptive names and tags
+[ ] Instances are in an Auto Scaling Group or have a recovery plan
+[ ] Application starts automatically on reboot (PM2 startup)
+[ ] Health check endpoint exists (/health returns 200)
+
+STORAGE AND DATABASE
+[ ] S3 Block Public Access is enabled
+[ ] S3 versioning is enabled for critical data
+[ ] RDS automated backups are configured (min 7 days)
+[ ] RDS deletion protection is enabled
+
+DEPLOYMENT
+[ ] Secrets are in Secrets Manager (not in source code or .env files)
+[ ] CI/CD pipeline is configured
+[ ] Rollback procedure is documented and tested
+[ ] Deployment does not cause downtime
+
+MONITORING
+[ ] CloudWatch CPU alarms are configured
+[ ] Application logs are accessible
+[ ] Billing anomaly detection is configured
+[ ] On-call contact is documented
+
+ISOLATION (FOR SHARED ACCOUNTS)
+[ ] New project has its own VPC
+[ ] New project has its own Security Groups
+[ ] New project uses a unique CIDR range
+[ ] New project uses different ports from existing projects
+[ ] No existing resources were modified
+[ ] Pre-flight audit was completed and documented
+```
+
+### Go-Live Decision Matrix
+
+| Status | Decision |
+| --- | --- |
+| All checkboxes checked | Safe to go live |
+| 1-3 minor items unchecked (non-security) | Go live with a documented remediation plan |
+| Any security item unchecked | Do not go live |
+| Any isolation item unchecked | Do not go live (risk of impacting existing systems) |
