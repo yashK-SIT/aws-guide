@@ -469,7 +469,8 @@ Amazon Linux 2023:
 
 ```bash
 sudo dnf update -y
-sudo dnf install -y git curl unzip jq nginx
+sudo dnf install -y git unzip jq
+sudo dnf install -y nginx --allowerasing
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 source ~/.bashrc
 nvm install 20
