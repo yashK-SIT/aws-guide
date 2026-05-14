@@ -1,8 +1,4 @@
 # Enterprise AWS Master Guide: From Zero to Production
-
-> **Persona:** Senior DevOps Architect sitting next to a Fresher.
-> **Goal:** A foolproof, step-by-step path to production with zero risk to existing infrastructure.
-
 ---
 
 ## 📋 Table of Contents
