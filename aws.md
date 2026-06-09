@@ -473,14 +473,14 @@ sudo dnf install -y git unzip jq
 sudo dnf install -y nginx --allowerasing
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 source ~/.bashrc
-nvm install 20
-nvm use 20
+nvm install 24
+nvm use 24
 npm install -g pm2
 sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-✅ **Expected result:** `node -v` shows v20.x.x and `nginx` is running.
+✅ **Expected result:** `node -v` shows v24.x.x and `nginx` is running.
 
 ---
 
