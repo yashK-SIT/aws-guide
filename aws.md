@@ -29,9 +29,9 @@ How to use this playbook:
 | 1   | [Introduction and Architectural Philosophy](#1-introduction-and-architectural-philosophy) | Why this playbook exists, who should use it, scope and philosophy       |
 | 2   | [Scenario-Based Entry & Decision Logic](#2-scenario-based-entry--decision-logic)          | How to classify your engagement: Greenfield, Brownfield, or Black Box   |
 | 3   | [AWS Account & Security (IAM)](#3-aws-account--security-iam)                              | Root account lockdown, IAM Users/Roles/Policies, MFA, secrets           |
-| 4   | [AWS Networking (VPC, Subnets, Routing)](#4-aws-networking-vpc-subnets-routing)           | VPC creation, public/private subnets, IGW, NAT Gateway, routing         |
-| 5   | [EC2 Setup & Compute Strategy](#5-ec2-setup--compute-strategy)                            | Instance types, AMI selection, SSH, Node.js, Nginx setup                |
-| 6   | [S3 Storage & Bucket Management](#6-s3-storage--bucket-management)                        | Bucket creation, permissions, signed URLs, static hosting               |
+| 4   | [AWS Networking (VPC, Subnets, Routing)](#4-aws-networking-vpc-subnets-routing)           | VPC creation, public/private subnets, IGW, NAT Gateway, routing, Route 53 DNS |
+| 5   | [EC2 Setup & Compute Strategy](#5-ec2-setup--compute-strategy)                            | Instance types, AMI selection, SSH, Node.js, Nginx setup, EBS, Systems Manager |
+| 6   | [S3 Storage & Bucket Management](#6-s3-storage--bucket-management)                        | Bucket creation, permissions, signed URLs, static hosting, CloudFront CDN |
 | 7   | [Database Strategy (RDS & Alternatives)](#7-database-strategy-rds--alternatives)          | RDS provisioning, backups, read replicas, scaling                       |
 | 8   | [Project Deployment (Backend + Frontend)](#8-project-deployment-backend--frontend)        | Node.js/PM2, React/Nginx/S3, secrets, deployment runbook                |
 | 9   | [Scaling Strategies (Vertical & Horizontal)](#9-scaling-strategies-vertical--horizontal)  | Auto Scaling Groups, ALB, target tracking policies                      |
@@ -750,6 +750,16 @@ Run the validation snippets after each step. At minimum, confirm:
 
 ---
 
+### Key Terms (Regions & Console)
+
+| Term | What It Means |
+| --- | --- |
+| **Region** | A geographical area containing multiple isolated data centers (Availability Zones). Examples: `us-east-1` (N. Virginia), `ap-south-1` (Mumbai). Resources are region-scoped. |
+| **Latency** | The time delay between a user's request and the server's response. Choosing a Region closer to your users reduces latency. |
+| **Disaster Recovery (DR)** | The strategy of replicating data and infrastructure across multiple Regions so the application survives even if an entire Region becomes unavailable. |
+
+---
+
 ### 0.0 AWS Console Orientation
 
 If you are new to AWS, learn the console layout before creating resources. Most early mistakes happen because of the wrong region or the wrong account.
@@ -829,6 +839,14 @@ The Root User email and password grant **absolute, irrevocable control** over th
 ---
 
 ### 0.2 Installing the AWS CLI
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Profile** | A named set of AWS CLI credentials and configuration stored in `~/.aws/credentials` and `~/.aws/config`. Profiles allow switching between multiple accounts or roles. |
+| **Access Key** | A pair of credentials (Access Key ID + Secret Access Key) used to authenticate CLI and API requests. Long-lived and should be rotated or replaced with SSO. |
+| **Region** | The geographical AWS data center cluster that the CLI targets by default (e.g., `us-east-1`). Can be overridden per command with `--region`. |
 
 The AWS Command Line Interface (CLI) is the tool that lets you manage AWS resources from your terminal. Every `aws` command in this playbook requires it.
 
@@ -2161,6 +2179,18 @@ Verify MFA is enabled, IAM policies are attached as intended, and billing alarms
 - Use IAM Identity Center (SSO) for day-to-day access.
 - Keep a documented, audited break-glass path only.
 
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **User** | A permanent identity with long-term credentials (password + access keys). Used for human or service access. |
+| **Group** | A collection of IAM users. Policies attached to the group apply to every member, simplifying permission management at scale. |
+| **Role** | An identity with short-lived, temporary credentials (no password, no access keys). The enterprise standard for both human and machine access. |
+| **Policy** | A JSON document that defines what actions are allowed or denied on which resources. Policies are attached to users, groups, or roles. |
+| **MFA** | Multi-Factor Authentication. A second verification factor (authenticator app, hardware key) required in addition to the password to prove identity. |
+
+---
+
 ### 3.1 The Root Account: The Keys to the Kingdom
 
 #### What is it?
@@ -2412,7 +2442,9 @@ Build a secure, multi-AZ VPC foundation with public, private, and isolated tiers
 1. Create the VPC and subnets (Sections 4.3 Steps 1-7).
 2. Attach IGW and configure route tables (Steps 3-5).
 3. Create NAT Gateway and private routes (Steps 8-9).
-4. Validate connectivity (Section 4.5).
+4. Configure DNS and hosted zones via Route 53 (Section 4.6).
+5. Reference Internet Gateway & NAT Gateway specifications (Section 4.7).
+6. Validate connectivity and troubleshoot network routing (Section 4.5).
 
 ### Commands
 
@@ -2431,6 +2463,21 @@ Run the public and private subnet connectivity tests in Section 4.5.
 
 - Use S3/DynamoDB VPC Endpoints to reduce NAT costs.
 - Tag all networking resources to avoid confusion later.
+
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **CIDR** | Classless Inter-Domain Routing. The IP address range notation (e.g., `10.0.0.0/16`) that defines how many IP addresses are available in a VPC or subnet. |
+| **Subnet** | A logical partition within a VPC tied to a single Availability Zone. Subnets are classified as public, private, or isolated based on their route table. |
+| **Route Table** | A set of rules that determine where network traffic is directed. Each subnet is associated with exactly one route table. |
+| **IGW (Internet Gateway)** | A horizontally scaled, redundant VPC component that allows resources in public subnets to communicate with the internet. |
+| **NAT (NAT Gateway)** | Network Address Translation. A managed service that allows instances in private subnets to initiate outbound internet traffic while blocking unsolicited inbound traffic. |
+| **Availability Zone (AZ)** | An isolated data center within an AWS Region. Each AZ has independent power, cooling, and networking. Deploying across multiple AZs provides fault tolerance. |
+| **Fault Isolation** | The practice of distributing resources across multiple AZs so that the failure of one data center does not take down the entire application. |
+| **High Availability (HA)** | An architecture pattern where the system continues operating even when individual components fail, achieved through redundancy across AZs. |
+
+---
 
 ### 4.1 The Virtual Private Cloud (VPC): The Internal Mechanics
 
@@ -2830,6 +2877,146 @@ _Troubleshooting if it hangs:_
 2. Does the Private Subnet Route Table have a route for `0.0.0.0/0` pointing to `nat-xxx`?
 3. Is the NACL blocking ephemeral return ports (1024-65535)?
 
+---
+
+### 4.6 Route 53: DNS Management
+
+#### What is it?
+
+Amazon Route 53 is a highly available, scalable Domain Name System (DNS) web service. It translates human-readable domain names (e.g., `api.acme.com`) into IP addresses (e.g., `54.123.45.67`) that computers use to route traffic. Route 53 also performs health checks on your endpoints and can automatically route traffic away from unhealthy targets.
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Hosted Zone** | A container for DNS records that belong to a single domain (e.g., `acme.com`). Public hosted zones resolve from the internet; private hosted zones resolve only within specified VPCs. |
+| **A Record** | A DNS record that maps a domain name directly to an IPv4 address (e.g., `api.acme.com` → `54.123.45.67`). |
+| **CNAME** | A DNS record that maps a domain name to another domain name (e.g., `www.acme.com` → `acme.com`). Cannot be used at the zone apex (bare domain). |
+| **TTL (Time to Live)** | The number of seconds a DNS resolver caches a record before querying Route 53 again. Lower TTL = faster DNS propagation but more queries (higher cost). |
+
+#### Why does it exist?
+
+Without DNS, users would need to type raw IP addresses to access your application. DNS provides the stable, memorable entry point that maps to your infrastructure. Route 53 integrates natively with AWS services — ALB, CloudFront, S3 static sites, and EC2 Elastic IPs — using **Alias records** that resolve at the AWS backbone level without additional latency or cost.
+
+#### When to use:
+
+- Mapping your custom domain to an ALB, CloudFront distribution, or EC2 Elastic IP.
+- Implementing failover routing: if the primary endpoint fails a health check, Route 53 automatically routes traffic to a secondary endpoint.
+- Latency-based routing: directing users to the AWS Region closest to them for the lowest response time.
+- Weighted routing: gradually shifting traffic between old and new deployments (canary releases).
+
+#### When NOT to use:
+
+- **As a load balancer.** Route 53 distributes traffic at the DNS level (which is cached by resolvers). For real-time, request-by-request distribution, use an ALB.
+- **For domains managed entirely outside AWS.** If your domain registrar and DNS are both external and you do not need AWS-native routing features, adding Route 53 adds unnecessary complexity.
+
+#### Step-by-Step: Create a Hosted Zone and Point to Your App (AWS Console)
+
+1. Open **AWS Console** → search **Route 53** → click **Route 53**.
+2. Click **Hosted zones** → **Create hosted zone**.
+3. Enter your domain name (e.g., `acme.com`).
+4. Type: **Public hosted zone** → **Create hosted zone**.
+5. Route 53 creates **NS (Name Server)** records. Copy these four NS values.
+6. Go to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.) and update the nameservers to the Route 53 NS values.
+7. Back in Route 53, click **Create record**:
+   - **Record name:** `api` (creates `api.acme.com`)
+   - **Record type:** A
+   - **Alias:** Enable if pointing to an ALB, CloudFront, or S3 endpoint
+   - **Value:** Your EC2 Elastic IP or ALB DNS name
+   - **TTL:** 300 seconds (5 minutes)
+8. Click **Create records**.
+
+#### Alternative: AWS CLI
+
+```bash
+# Create a hosted zone
+aws route53 create-hosted-zone \
+    --name acme.com \
+    --caller-reference "prod-$(date +%Y%m%d%H%M%S)"
+
+# Create an A record pointing to an Elastic IP
+cat > /tmp/route53-record.json <<'EOF'
+{
+  "Comment": "A record for API server",
+  "Changes": [{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {
+      "Name": "api.acme.com",
+      "Type": "A",
+      "TTL": 300,
+      "ResourceRecords": [{"Value": "54.123.45.67"}]
+    }
+  }]
+}
+EOF
+
+aws route53 change-resource-record-sets \
+    --hosted-zone-id Z1234567890ABC \
+    --change-batch file:///tmp/route53-record.json
+```
+
+#### Validation
+
+```bash
+# Test DNS resolution (may take 5-30 minutes for nameserver propagation)
+dig +short api.acme.com
+# Expected: 54.123.45.67
+
+# Verify the hosted zone records
+aws route53 list-resource-record-sets \
+    --hosted-zone-id Z1234567890ABC \
+    --output table
+```
+
+#### Common Errors
+
+- **DNS not resolving:** Nameservers at the domain registrar have not been updated to Route 53 NS values. Propagation can take up to 48 hours.
+- **CNAME at zone apex:** Route 53 does not allow CNAME records at the bare domain (`acme.com`). Use an **Alias** record instead, which is a Route 53-specific feature that works at the apex.
+- **Health check false positives:** Ensure the health check path returns HTTP 200. If your app requires authentication on all endpoints, create a dedicated `/health` endpoint that bypasses auth.
+
+#### How It Connects to Other AWS Services
+
+Route 53 is the entry point for all traffic into your AWS infrastructure. It connects to:
+
+- **ALB:** Alias A records point your domain to an ALB DNS name. Route 53 resolves this without extra latency.
+- **CloudFront:** Alias records point to CloudFront distributions for CDN-accelerated content delivery.
+- **S3:** Alias records point to S3 static website endpoints.
+- **EC2:** A records point directly to Elastic IPs on EC2 instances.
+
+---
+
+### 4.7 Internet Gateway & NAT Gateway: Quick Reference
+
+#### What are they?
+
+- **Internet Gateway (IGW):** A horizontally scaled, redundant, and highly available VPC component that allows communication between instances in your VPC and the internet. It provides a target in your VPC route tables for internet-routable traffic and performs Network Address Translation (NAT) for instances assigned public IPv4 addresses.
+- **NAT Gateway (Network Address Translation):** A managed AWS service that enables instances in a private subnet to connect to the internet or other AWS services, but prevents the internet from initiating a connection with those instances.
+
+#### Key Terms
+
+| Service | Term | What It Means |
+| --- | --- | --- |
+| **Internet Gateway** | **Gateway** | The entry/exit point for public internet traffic entering or leaving a VPC. |
+| **Internet Gateway** | **Public Route** | A route in a route table that directs non-local traffic (`0.0.0.0/0`) to the Internet Gateway. |
+| **NAT Gateway** | **NAT** | Network Address Translation. Translates private IP addresses to a single public Elastic IP to mask the private resource's identity. |
+| **NAT Gateway** | **Private Subnet** | A subnet whose route table does not have a route to an IGW, but directs internet-bound traffic to a NAT Gateway. |
+
+#### Why do they exist?
+
+A raw VPC is a completely isolated private network.
+- **IGW** exists to bridge the VPC to the public internet, enabling public-facing resources (like Application Load Balancers or public bastion hosts) to send and receive public traffic.
+- **NAT Gateway** exists to solve a security dilemma: backend application servers and databases must download updates, patches, and call external APIs, but they should never be exposed directly to inbound internet traffic. The NAT Gateway acts as a one-way gateway.
+
+#### When to use:
+
+- **Internet Gateway:** Always needed when a VPC requires any public-facing resources or direct inbound/outbound public internet access.
+- **NAT Gateway:** Use for instances in private subnets that need outbound-only internet connectivity (e.g., to run `npm install`, download OS security patches, or call external SaaS APIs).
+
+#### When NOT to use:
+
+- **NAT Gateway for private communication with AWS services:** Do not route traffic to services like S3 or DynamoDB through a NAT Gateway. Use **VPC Endpoints (Gateway or Interface)** instead. Gateway endpoints are free and keep the traffic entirely within the AWS network, saving significant NAT data processing costs.
+- **NAT Gateway for fully isolated databases:** Fully isolated database tiers (e.g., RDS/Aurora) that do not require any external updates or connections should not have any route to a NAT Gateway.
+
 ## 5. EC2 Setup & Compute Strategy
 
 ### Purpose
@@ -2849,6 +3036,8 @@ Choose the right EC2 resources and provision instances safely for production wor
 3. Launch EC2 and connect securely (Section 5.5).
 4. Install runtime dependencies and Nginx (Section 5.5).
 5. Harden SSH if required (Section 5.6).
+6. Provision and attach EBS persistent block storage volumes (Section 5.8).
+7. Configure AWS Systems Manager (SSM) for SSH-less management (Section 5.9).
 
 ### Commands
 
@@ -2867,6 +3056,18 @@ Confirm the instance is running, reachable, and serving Nginx locally.
 
 - Prefer SSM Session Manager to avoid opening SSH.
 - Use Golden AMIs for repeatable, secure builds.
+
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Instance** | A single virtual server running on the AWS Nitro hypervisor. Each instance is an isolated compute unit with allocated CPU, memory, storage, and network. |
+| **vCPU** | Virtual CPU. A thread of a physical CPU core allocated to the instance. A `t3.medium` with 2 vCPUs has two hardware threads available for computation. |
+| **AMI (Amazon Machine Image)** | A pre-configured, immutable snapshot of an operating system volume used as the template to launch EC2 instances. |
+| **EBS (Elastic Block Store)** | Persistent block storage volumes that attach to EC2 instances. Data survives instance stops and restarts. Covered in detail in Section 5.8. |
+| **SSH (Secure Shell)** | A cryptographic network protocol used for secure remote access to EC2 instances over port 22, authenticated via key pairs (`.pem` files). |
+
+---
 
 ### 5.1 What is EC2?
 
@@ -3526,6 +3727,212 @@ sudo sshd -T | grep -E 'passwordauthentication|permitrootlogin|port'
 - _The Impact:_ Total downtime until an engineer manually launches a new instance, configures it, and points DNS to it. If this happens at 3 AM on a Saturday, the outage could last hours.
 - _The Mandate:_ Even a single instance should be placed inside an Auto Scaling Group (ASG) with `min=1, max=1, desired=1`. If the instance fails a health check or the underlying host degrades, the ASG will automatically terminate the unhealthy instance and launch a fresh replacement from the Launch Template. This is called "self-healing infrastructure."
 
+---
+
+### 5.8 EBS (Elastic Block Store): Persistent Block Storage
+
+#### What is it?
+
+Amazon Elastic Block Store (EBS) provides persistent, network-attached block storage volumes for EC2 instances. Think of an EBS volume as a virtual hard drive that you plug into your virtual server. Unlike instance store volumes (which are physically attached to the host and destroyed when the instance stops), EBS volumes persist independently of the EC2 instance lifecycle. You can stop an instance, and the data on its EBS volume survives. You can detach a volume and re-attach it to a different instance.
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Volume** | A block storage device that attaches to a single EC2 instance at a time. Volumes have a specific size (GiB) and type (gp3, io2, st1). Each volume lives in a single Availability Zone. |
+| **Snapshot** | A point-in-time backup of an EBS volume stored in S3. Snapshots are incremental — only changed blocks are stored after the first snapshot, reducing cost and time. |
+| **IOPS** | Input/Output Operations Per Second. A measure of storage performance. Higher IOPS = faster read/write operations. gp3 provides 3,000 baseline IOPS; io2 provides up to 256,000 IOPS. |
+
+#### Why does it exist?
+
+EC2 instances need persistent, reliable storage for operating system files, application data, logs, and databases. Without EBS, every time an instance stops or terminates, all data would be lost. EBS decouples storage from compute, allowing you to resize volumes, take backups (snapshots), and move data between instances without downtime.
+
+#### Volume Types Decision Matrix
+
+| Type | Use Case | IOPS | Throughput | Cost |
+| --- | --- | --- | --- | --- |
+| **gp3** | General purpose (boot volumes, apps, dev/staging) | 3,000 baseline (up to 16,000) | 125 MiB/s (up to 1,000) | Lowest |
+| **io2** | High-performance databases (Oracle, SQL Server) | Up to 256,000 | Up to 4,000 MiB/s | Highest |
+| **st1** | Big data, log processing, sequential reads | 500 baseline | 500 MiB/s | Low |
+| **sc1** | Cold storage, infrequent access archives | 250 baseline | 250 MiB/s | Lowest |
+
+#### When to use:
+
+- Boot volumes for all EC2 instances (gp3 is the default and best general choice).
+- Database storage for self-managed databases running on EC2 (PostgreSQL, MySQL, MongoDB).
+- Application logs and temporary build artifacts that must persist across instance restarts.
+- High-IOPS workloads (io2) for latency-sensitive databases that cannot use RDS.
+
+#### When NOT to use:
+
+- **Shared storage across multiple instances.** EBS volumes attach to a single instance. For shared file systems, use Amazon EFS (Elastic File System) or S3.
+- **Object storage (images, videos, backups).** Use S3 instead — it is cheaper, more durable, and designed for object access patterns.
+- **Temporary scratch data.** If the data can be regenerated and you need maximum I/O speed, use instance store volumes (NVMe) on instance types like `i3` or `c5d`.
+
+#### Step-by-Step: Create and Attach an EBS Volume (AWS Console)
+
+1. Open **AWS Console** → search **EC2** → click **EC2**.
+2. In the left menu, click **Volumes** → **Create volume**.
+3. **Volume type:** `gp3`.
+4. **Size:** `50 GiB` (adjust to your needs).
+5. **Availability Zone:** Must match the AZ of the target EC2 instance.
+6. **Encryption:** Enable → select the default KMS key.
+7. Click **Create volume**.
+8. Select the new volume → **Actions** → **Attach volume**.
+9. Select your instance and device name (e.g., `/dev/xvdf`).
+10. Click **Attach volume**.
+
+After attaching, SSH into the instance and format/mount the volume:
+
+```bash
+# List all block devices
+lsblk
+
+# Format the volume (ONLY if it is new and empty — this erases all data)
+sudo mkfs -t xfs /dev/xvdf
+
+# Create a mount point and mount the volume
+sudo mkdir -p /data
+sudo mount /dev/xvdf /data
+
+# Make the mount persistent across reboots
+echo '/dev/xvdf /data xfs defaults,nofail 0 2' | sudo tee -a /etc/fstab
+```
+
+#### Alternative: AWS CLI
+
+```bash
+# Create a volume
+aws ec2 create-volume \
+    --volume-type gp3 \
+    --size 50 \
+    --availability-zone us-east-1a \
+    --encrypted \
+    --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=prod-data-vol}]'
+
+# Attach the volume to an instance
+aws ec2 attach-volume \
+    --volume-id vol-0abc1234def56789 \
+    --instance-id i-0abc1234def56789 \
+    --device /dev/xvdf
+
+# Create a snapshot (backup)
+aws ec2 create-snapshot \
+    --volume-id vol-0abc1234def56789 \
+    --description "Prod data backup $(date +%Y-%m-%d)" \
+    --tag-specifications 'ResourceType=snapshot,Tags=[{Key=Name,Value=prod-data-backup}]'
+```
+
+#### Validation
+
+```bash
+# Verify the volume is attached
+aws ec2 describe-volumes \
+    --volume-ids vol-0abc1234def56789 \
+    --query 'Volumes[0].[State, Attachments[0].InstanceId]' \
+    --output text
+# Expected: in-use  i-0abc1234def56789
+
+# Verify the mount on the instance
+df -h /data
+# Expected: /dev/xvdf  50G  ... /data
+```
+
+#### Common Errors
+
+- **Volume in wrong AZ:** EBS volumes can only attach to instances in the same Availability Zone. To move data to another AZ, create a snapshot and restore it in the target AZ.
+- **Forgetting `/etc/fstab`:** The volume will unmount on reboot if not added to fstab.
+- **Formatting an existing volume:** Running `mkfs` on a volume with existing data **destroys all data permanently**. Always check with `lsblk` and `file -s /dev/xvdf` first.
+
+#### How It Connects to Other AWS Services
+
+- **EC2:** Every EC2 instance has at least one EBS volume (the root/boot volume). Additional volumes provide extra storage.
+- **Snapshots → S3:** EBS snapshots are stored in S3 (managed by AWS). You can copy snapshots across Regions for disaster recovery.
+- **Auto Scaling:** Launch Templates specify EBS volume configurations. Every new instance launched by an ASG gets identical storage.
+- **CloudWatch:** Monitor `VolumeReadOps`, `VolumeWriteOps`, and `BurstBalance` metrics to detect I/O bottlenecks.
+
+---
+
+### 5.9 AWS Systems Manager (SSM): Server Management Without SSH
+
+#### What is it?
+
+AWS Systems Manager (SSM) is a suite of management tools that allows you to view, control, and automate your EC2 instances without opening SSH ports. The core feature is **Session Manager**, which provides a browser-based or CLI-based shell session to your instances through the AWS control plane — no SSH keys, no port 22, no bastion hosts required.
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **SSM Agent** | A lightweight agent installed on EC2 instances that communicates with the Systems Manager service. Pre-installed on Amazon Linux 2023 and Ubuntu 20.04+ AMIs. |
+| **Session Manager** | A feature that provides secure, auditable shell access to instances without needing SSH, public IPs, or open inbound ports. Sessions are logged in CloudTrail and optionally in S3/CloudWatch. |
+
+#### Why does it exist?
+
+SSH is the traditional method for remote access, but it introduces significant security risks in enterprise environments: SSH keys can be lost, shared, or stolen; port 22 must be opened in Security Groups (expanding the attack surface); and SSH sessions are not centrally logged or auditable. SSM Session Manager eliminates all of these problems by routing shell access through the AWS API, authenticated by IAM policies and audited by CloudTrail.
+
+#### When to use:
+
+- Any time you need shell access to an EC2 instance in production. SSM Session Manager should be the **default access method**.
+- When your instances are in **private subnets** with no public IP. SSM works without inbound internet connectivity — the agent initiates an outbound HTTPS connection to the SSM service endpoint.
+- When compliance requires **auditable access logs**. Every session start, command executed, and session end is recorded.
+- When running **automated maintenance**: patch management, configuration compliance checks, and inventory collection across fleets.
+
+#### When NOT to use:
+
+- **As a replacement for CI/CD.** Do not use SSM Run Command to deploy application code manually. Use a proper CI/CD pipeline (Section 10).
+- **For file transfer.** SSM Session Manager does not support SCP/SFTP natively. For file transfers, use S3 as an intermediary.
+
+#### Step-by-Step: Enable SSM on an EC2 Instance
+
+**Prerequisites:**
+
+1. The instance must have an IAM Role with the `AmazonSSMManagedInstanceCore` managed policy attached (see Section 5.5 Step 0 for the role creation walkthrough).
+2. The SSM Agent must be running (pre-installed on Amazon Linux 2023 and most modern AMIs).
+3. The instance must be able to reach the SSM service endpoint via HTTPS (port 443) — either through a NAT Gateway (private subnet) or a VPC Endpoint for SSM.
+
+**Access via Console:**
+
+1. Open **AWS Console** → search **Systems Manager** → click **Systems Manager**.
+2. In the left menu, click **Session Manager** → **Start session**.
+3. Select your instance → **Start session**.
+4. A browser-based terminal opens with a shell prompt.
+
+**Access via CLI:**
+
+```bash
+# Start a session (requires AWS CLI Session Manager Plugin)
+aws ssm start-session --target i-0abc1234def56789
+
+# Run a command on a single instance without a session
+aws ssm send-command \
+    --instance-ids i-0abc1234def56789 \
+    --document-name "AWS-RunShellScript" \
+    --parameters 'commands=["uptime","df -h","pm2 status"]'
+```
+
+#### Validation
+
+```bash
+# Check if the instance is registered with SSM
+aws ssm describe-instance-information \
+    --query 'InstanceInformationList[*].[InstanceId, PingStatus, AgentVersion]' \
+    --output table
+# Expected: i-0abc1234...  Online  3.x.x.x
+```
+
+#### Common Errors
+
+- **Instance shows "Connection Lost":** The IAM instance profile is missing or the SSM Agent is not running. Check: `sudo systemctl status amazon-ssm-agent`.
+- **Timeout connecting:** The instance cannot reach the SSM endpoint. In private subnets without NAT, create VPC Endpoints for `ssm`, `ssmmessages`, and `ec2messages`.
+- **"TargetNotConnected":** The instance just launched and the agent has not registered yet. Wait 2-3 minutes and retry.
+
+#### How It Connects to Other AWS Services
+
+- **EC2:** SSM manages instances — providing shell access, patch management, and inventory.
+- **IAM:** Access to SSM sessions is controlled by IAM policies. You can restrict which users can start sessions on which instances.
+- **CloudTrail:** Every SSM session and command is logged, providing a complete audit trail of who accessed what, when.
+- **CloudWatch:** Session logs can be shipped to CloudWatch Logs for centralized monitoring and alerting.
+
 ## 6. S3 Storage & Bucket Management
 
 ### Purpose
@@ -3544,6 +3951,7 @@ Provision secure, scalable object storage for assets, logs, and static sites.
 2. Configure permissions and public access blocks (Section 6.3).
 3. Decide public vs. private access patterns (Section 6.4).
 4. Enable encryption and lifecycle policies (Sections 6.7 and 6.8).
+5. Distribute content globally using CloudFront CDN (Section 6.11).
 
 ### Commands
 
@@ -3562,6 +3970,18 @@ Run the `aws s3 ls` and policy validation steps after each change.
 
 - Default to private buckets with CloudFront OAC.
 - Enable versioning for critical data.
+
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Bucket** | A named container for storing objects in S3. Bucket names are globally unique across all AWS accounts. Each bucket lives in a specific AWS Region. |
+| **Object** | A single file stored in S3, consisting of the data (binary blob), a key (full path), and metadata (content type, timestamps, custom headers). |
+| **Key** | The unique identifier (full path) of an object within a bucket. For example, `uploads/2026/05/invoice.pdf` is the key. S3 has no real folders—the `/` in keys is cosmetic. |
+| **Metadata** | Key-value pairs attached to an object. Includes system metadata (Content-Type, Last-Modified) and user-defined metadata (custom headers for application logic). |
+| **Presigned URL** | A time-limited, authenticated URL that grants temporary access to a private S3 object without requiring AWS credentials. Used for secure file downloads and uploads. |
+
+---
 
 ### 6.1 What is Amazon S3?
 
@@ -3965,6 +4385,159 @@ S3 data leaks have caused more public embarrassment and regulatory fines than al
 - _Issue:_ `SlowDown` errors (HTTP 503) during high-throughput uploads.
 - _Resolution:_ S3 automatically partitions keys by prefix. If all objects share the same prefix (e.g., `logs/2026-05-01/...`), S3 may throttle. Distribute objects across randomized prefixes or use hex hash prefixes.
 
+---
+
+### 6.11 Amazon CloudFront: Global Content Delivery Network
+
+#### What is it?
+
+Amazon CloudFront is a fast, highly secure Content Delivery Network (CDN) service that globally distributes static and dynamic web content (such as HTML, CSS, JavaScript, images, and videos) to users. Instead of serving all requests directly from your origin server (like S3 or an EC2 instance), CloudFront routes user requests to the nearest edge location, which caches the content to reduce latency and speed up delivery.
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **CDN** | Content Delivery Network. A globally distributed network of servers designed to serve content quickly by caching it closer to end-users. |
+| **Edge Location** | A physical site where CloudFront caches content. These are distinct from AWS Regions and Availability Zones; there are hundreds of edge locations globally. |
+| **Cache** | The process of storing copies of files in edge locations so that subsequent requests for the same content can be served faster without querying the origin. |
+| **Origin** | The source server where your original, master content is stored (e.g., an S3 bucket, an Application Load Balancer, or an EC2 instance). |
+| **Origin Access Control (OAC)** | The recommended AWS security method to restrict S3 bucket access so that users can only access S3 objects via CloudFront, preventing direct S3 URLs from bypassing CDN controls. |
+
+#### Why does it exist?
+
+Serving content from a single AWS Region to users worldwide introduces significant latency due to physical distance (e.g., a user in Tokyo accessing a server in Virginia). Additionally, spikes in traffic can overwhelm origin servers (like S3 or EC2). CloudFront solves these issues by:
+
+1. **Reducing Latency:** Caching content at the edge, reducing Round Trip Time (RTT).
+2. **Offloading Origins:** Serving cached content directly from edge locations, drastically reducing load on your S3 buckets or backend servers.
+3. **Enhancing Security:** Providing built-in DDoS protection via AWS Shield Standard and integrating with AWS WAF (Web Application Firewall) directly at the edge.
+4. **Enabling HTTPS:** Allowing you to associate custom SSL/TLS certificates (from ACM) at the domain apex or subdomains.
+
+#### When to use:
+
+- Serving static assets (images, stylesheets, frontend JS bundles) hosted on S3.
+- Delivering global web applications with users distributed across multiple continents.
+- Securing static websites with custom domains and HTTPS.
+- Reducing origin egress costs (transferring data from S3 to CloudFront is free; you only pay for CloudFront global data transfer out, which is often cheaper).
+- Dynamic API acceleration (using CloudFront optimized routing to speed up connection setup and SSL handshakes).
+
+#### When NOT to use:
+
+- **Strictly internal applications.** If your application is accessed only within your corporate network or VPC, a public CDN is unnecessary and increases security complexity.
+- **Real-time, highly dynamic transactional endpoints that cannot be cached.** While CloudFront can accelerate API requests, if caching is disabled entirely and latency is not a critical bottleneck, the added layer may not be cost-effective.
+
+#### Step-by-Step: Create a CloudFront Distribution with S3 Origin and OAC (AWS Console)
+
+1. Open **AWS Console** → search **CloudFront** → click **CloudFront**.
+2. Click **Create distribution**.
+3. **Origin domain:** Select your S3 bucket (e.g., `acme-corp-prod-assets.s3.amazonaws.com`).
+4. **Origin access:** Choose **Origin access control settings (recommended)**.
+   - Click **Create new OAC**.
+   - Leave default settings (Sign requests, Origin type: S3) and click **Create**.
+5. **Default cache behavior:**
+   - **Viewer protocol policy:** Select **Redirect HTTP to HTTPS**.
+   - **Allowed HTTP methods:** Select `GET, HEAD` (or `GET, HEAD, OPTIONS` if hosting fonts/assets requiring CORS).
+6. **Cache key and origin requests:** Select **Cache policy and origin request policy (recommended)**.
+   - **Cache policy:** Select `CachingOptimized` (default).
+7. **Web Application Firewall (WAF):** Select **Do not enable security protections** (or enable if you already have a WAF WebACL ready).
+8. **Settings:**
+   - **Price class:** Select **Use all edge locations (best performance)**.
+   - **Default root object:** Enter `index.html` (if hosting a single page app).
+9. Click **Create distribution**.
+10. **CRITICAL SECURITY STEP:** Once created, copy the generated **S3 bucket policy** shown in the CloudFront banner. Go to your S3 bucket → **Permissions** → **Bucket policy** → **Edit**, paste the policy, and click **Save changes**. This allows CloudFront OAC to read from the private S3 bucket.
+
+#### Alternative: AWS CLI
+
+```bash
+# Create an Origin Access Control (OAC) config file (oac-config.json)
+cat <<EOF > oac-config.json
+{
+  "Name": "s3-oac-assets",
+  "SigningProtocol": "sigv4",
+  "SigningBehavior": "always",
+  "OriginAccessControlInputOriginType": "s3"
+}
+EOF
+
+# Create the OAC in AWS
+aws cloudfront create-origin-access-control --origin-access-control-config file://oac-config.json
+
+# Create the distribution config file (dist-config.json)
+# Replace YOUR_OAC_ID, YOUR_S3_BUCKET_NAME, and CALLER_REFERENCE with actual values
+cat <<EOF > dist-config.json
+{
+  "CallerReference": "cli-distribution-$(date +%s)",
+  "Aliases": {
+    "Quantity": 0
+  },
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "S3-Origin",
+        "DomainName": "acme-corp-prod-assets.s3.amazonaws.com",
+        "S3OriginConfig": {
+          "OriginAccessIdentity": ""
+        },
+        "OriginAccessControlId": "YOUR_OAC_ID"
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-Origin",
+    "TrustedSigners": {
+      "Enabled": false,
+      "Quantity": 0
+    },
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 2,
+      "Items": ["GET", "HEAD"],
+      "CachedMethods": {
+        "Quantity": 2,
+        "Items": ["GET", "HEAD"]
+      }
+    },
+    "Compress": true,
+    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  },
+  "Comment": "Production Assets CDN",
+  "Enabled": true
+}
+EOF
+
+# Deploy the distribution
+aws cloudfront create-distribution --distribution-config file://dist-config.json
+```
+
+#### Validation
+
+```bash
+# Verify DNS resolution of the CloudFront distribution domain
+nslookup d111111abcdef8.cloudfront.net
+# Expected: Returns multiple public IP addresses representing Edge Locations
+
+# Test retrieving an asset through CloudFront
+curl -I https://d111111abcdef8.cloudfront.net/logo.png
+# Expected: HTTP/2 200 OK
+# Look for headers:
+# X-Cache: Hit from cloudfront (or Miss from cloudfront on first request)
+```
+
+#### Common Errors
+
+- **AccessDenied (HTTP 403) from CloudFront:** The S3 bucket policy was not updated to allow the CloudFront distribution's OAC service principal access to the bucket. Make sure the S3 bucket policy contains the `s3:GetObject` statement for the CloudFront Distribution ARN.
+- **The specified distribution does not exist:** If deploying via CLI or referencing it, double check the distribution ID.
+- **Caching of old files (Stale content):** If you deploy a new version of an app, users might still see the old version due to CloudFront caching. To resolve, either use **cache busting** (unique versioned filenames like `app.v2.js`) or perform a **CloudFront Invalidation** (`aws cloudfront create-invalidation --distribution-id DIST_ID --paths "/*"`).
+
+#### How It Connects to Other AWS Services
+
+- **S3:** Serves as the primary origin for static files, files are secured with OAC.
+- **ACM:** Integrates to provide free SSL/TLS certificates for custom domains (e.g., `cdn.acme.com`).
+- **ALB:** Can serve as the origin for dynamic pages, providing global TLS termination and DDoS mitigation.
+- **Route 53:** Uses Alias records to route custom domain queries to the CloudFront distribution.
+- **WAF:** Protects the CloudFront distribution against SQL injection, cross-site scripting, and rate-limits bot traffic at the edge.
+
 ## 7. Database Strategy (RDS & Alternatives)
 
 ### Purpose
@@ -4001,6 +4574,17 @@ Confirm the DB is `available`, endpoints resolve, and you can connect via SSM or
 
 - Use Multi-AZ for production.
 - Store credentials only in Secrets Manager.
+
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **DB Instance** | A single managed database server running in AWS. It includes the database engine, compute, storage, and networking — all managed by RDS. |
+| **Snapshot** | A point-in-time backup of an entire RDS database stored in S3. Snapshots can be used to restore a database or create copies in other regions. |
+| **Read Replica** | A read-only copy of the primary database that handles read traffic, offloading the primary instance and improving read performance. |
+| **Multi-AZ** | A deployment mode where RDS automatically maintains a synchronous standby replica in a different Availability Zone for automatic failover during outages. |
+
+---
 
 ### 7.1 What is Amazon RDS?
 
@@ -5303,6 +5887,19 @@ Verify healthy targets, scaling events, and alarm-driven policies are working.
 - Pre-scale for predictable events.
 - Use WAF + rate limits to avoid scaling during attacks.
 
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **ASG (Auto Scaling Group)** | A managed fleet of EC2 instances that automatically scales out (adds instances) or scales in (removes instances) based on demand metrics or schedules. |
+| **Desired Capacity** | The target number of instances the ASG attempts to maintain at any given time. The ASG adjusts the actual count to match this value. |
+| **Scaling Policy** | A rule that tells the ASG when and how to add or remove instances. Policies can be target-tracking (maintain a metric), step-based, or scheduled. |
+| **Listener** | A process on the ALB that checks for incoming connection requests on a configured protocol and port (e.g., HTTPS on port 443). |
+| **Target Group** | A logical grouping of registered instances (or IPs) that the ALB distributes traffic to. Each target group has its own health check configuration. |
+| **Health Check** | A periodic probe (HTTP GET to a path like `/health`) sent by the ALB to each registered target. Targets that fail consecutive checks are marked unhealthy and removed from rotation. |
+
+---
+
 ### 9.1 The Scaling Imperative: Why This Section Can Save the Company
 
 Scaling is the engineering discipline of ensuring that an application continues to serve users reliably and performantly as demand increases—whether that increase is gradual organic growth or an instantaneous 100x traffic spike from a viral social media post, a flash sale, or a DDoS attack. A system that cannot scale is a system with a countdown timer. The only question is when it breaks, not if.
@@ -6354,6 +6951,17 @@ Confirm metrics and log streams appear in CloudWatch within 2-3 minutes.
 - Keep alarms minimal and actionable.
 - Use structured JSON logs for faster incident response.
 
+### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Metric** | A numerical time-series data point collected at regular intervals (e.g., CPUUtilization at 75% at 10:05 AM). Metrics answer "what is happening right now." |
+| **Log Group** | A container in CloudWatch Logs that holds log streams from a common source (e.g., all logs from `/var/log/app.log` across multiple EC2 instances). |
+| **Alarm** | A CloudWatch rule that monitors a metric and triggers an action (SNS notification, Auto Scaling event, Lambda function) when the metric crosses a defined threshold. |
+| **Dashboard** | A customizable visual display in CloudWatch showing real-time graphs, numbers, and status indicators for selected metrics and alarms. |
+
+---
+
 ### 11.1 The Monitoring Imperative: You Cannot Fix What You Cannot See
 
 #### What is monitoring?
@@ -7022,6 +7630,14 @@ This policy allows S3 read access ONLY to a specific bucket, ONLY from the `us-e
 ---
 
 ### 12.3 AWS Secrets Manager: Full Lifecycle Management
+
+#### Key Terms
+
+| Term | What It Means |
+| --- | --- |
+| **Secret** | A named entity in Secrets Manager that stores sensitive data (database passwords, API keys, JWT signing secrets) as encrypted key-value pairs. |
+| **Rotation** | The automated process of periodically generating a new secret value and updating all dependent services, eliminating the risk of long-lived credentials. |
+| **KMS (Key Management Service)** | The AWS service that manages encryption keys. Secrets Manager encrypts every secret at rest using a KMS key (default or customer-managed). |
 
 Section 3.5 introduced Secrets Manager at a conceptual level. This section covers the full operational lifecycle—creation, retrieval, rotation, auditing, and emergency revocation.
 
