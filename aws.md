@@ -12,11 +12,11 @@ How to use this playbook:
 
 | #    | Section                                                                                   | What You Will Learn                                                     |
 | --- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Start | [Beginner Mode: Foolproof A to Z](#beginner-mode-foolproof-a-to-z)                       | Step-by-step safe deployment without breaking existing systems          |
+| Start | [Beginner Mode: Foolproof A to Z](#beginner-mode-foolproof-a-to-z)                      | Step-by-step safe deployment without breaking existing systems          |
 | 0.0 | [AWS Console Orientation](#00-aws-console-orientation)                                    | Console layout, regions, account context                                |
 | 0.1 | [Creating an AWS Account](#01-creating-an-aws-account-first-time-setup)                   | Root account setup and safety                                           |
-| 0.2 | [Installing the AWS CLI](#02-installing-the-aws-cli)                                      | CLI installation on Windows, macOS, and Linux                           |
-| 0.3 | [Configuring AWS CLI Credentials](#03-configuring-aws-cli-credentials)                    | Access keys, profiles, validation                                       |
+| 0.2 | [Installing the AWS CLI](#02-installing-the-aws-cli)                                      | GUI installer (Windows, macOS) and command-line alternative (all OS)    |
+| 0.3 | [Configuring AWS CLI Credentials](#03-configuring-aws-cli-credentials)                    | Create access keys via Console, configure CLI, validate credentials     |
 | 0.4 | [Creating an SSH Key Pair](#04-creating-an-ssh-key-pair)                                  | SSH keys, permissions, key safety                                       |
 | 0.5 | [Do Not Touch Existing Resources](#05-do-not-touch-existing-resources)                    | Safe-change protocol for shared accounts                                |
 | 0.6 | [Pre-Flight Audit](#06-pre-flight-audit)                                                  | Baseline inventory before creating anything                             |
@@ -194,7 +194,9 @@ Micro-steps:
 
 ---
 
-### Step 6: Install the AWS CLI (Local Machine)
+### Step 6: Install the AWS CLI (Optional)
+
+> 💡 The AWS CLI is **not required** to follow this beginner guide — all steps use the AWS Console. However, installing the CLI gives you a powerful alternative for managing resources and is needed for some advanced sections later in this playbook.
 
 Where: **Your laptop**
 
@@ -233,7 +235,9 @@ aws --version
 
 ---
 
-### Step 7: Configure AWS CLI Credentials
+### Step 7: Configure AWS CLI Credentials (Optional)
+
+> 💡 Skip this step if you did not install the AWS CLI in Step 6. You can manage everything through the AWS Console.
 
 Where: **AWS Console + your laptop**
 
@@ -312,9 +316,24 @@ chmod 400 ~/Downloads/acme-dev-keypair.pem
 
 ### Step 9: Pre-Flight Audit (Required for Existing Accounts)
 
-Where: **Your laptop terminal**
+Where: **AWS Console**
 
-Run this read-only audit and save the output before creating anything:
+Before creating anything, check what already exists in the account:
+
+Micro-steps:
+
+1. **EC2:** Search **EC2** → click **Instances**. Note any running or stopped instances.
+2. **VPC:** Search **VPC** → click **Your VPCs**. Note any non-default VPCs.
+3. **S3:** Search **S3** → review any existing buckets.
+4. **RDS:** Search **RDS** → click **Databases**. Note any existing database instances.
+5. **IAM:** Search **IAM** → click **Users**. Note any existing users.
+6. Take screenshots or write down the resource names and IDs.
+
+✅ **Expected result:** You have a baseline of what already exists.
+
+Alternative: AWS CLI
+
+If you installed the AWS CLI (Step 6), you can run this read-only audit instead:
 
 ```bash
 echo "=== IDENTITY ===" && aws sts get-caller-identity
@@ -324,8 +343,6 @@ echo "=== VPCS ===" && aws ec2 describe-vpcs --output table
 echo "=== S3 ===" && aws s3 ls
 echo "=== RDS ===" && aws rds describe-db-instances --output table
 ```
-
-✅ **Expected result:** You have a baseline of what already exists.
 
 ---
 
@@ -741,7 +758,7 @@ Console map (approx):
 
 ```
 +-----------------------------------------------------------------------+
-| [menu] AWS  Search bar                 Region v  Account v  Bell       |
+| [menu] AWS  Search bar                 Region v  Account v  Bell      |
 |-----------------------------------------------------------------------|
 | Recently Visited Services                                             |
 | [EC2] [IAM] [S3] [RDS]                                                |
@@ -819,20 +836,51 @@ The AWS Command Line Interface (CLI) is the tool that lets you manage AWS resour
 
 A program you install on your local computer (Windows, Mac, or Linux) that translates your terminal commands into AWS API calls. When you type `aws ec2 describe-instances`, the CLI authenticates with your AWS credentials, sends an HTTPS request to the EC2 API, and returns the result as JSON or a table.
 
-#### Step-by-Step Installation
+#### Step-by-Step Installation (Installer / GUI)
 
 ##### Windows
 
-```powershell
-# Download and run the official MSI installer
-# Option 1: Download from browser
-# Go to: https://awscli.amazonaws.com/AWSCLIV2.msi
-# Double-click the downloaded file and follow the installer wizard.
+1. Open your browser and go to: **https://awscli.amazonaws.com/AWSCLIV2.msi**
+2. The `.msi` installer file downloads automatically.
+3. Double-click the downloaded file.
+4. Click **Next** through the wizard → **Install** → **Finish**.
+5. **Close and reopen** PowerShell (required to refresh the PATH).
+6. Verify:
 
-# Option 2: Install via command line (PowerShell as Administrator)
+```powershell
+aws --version
+# Expected: aws-cli/2.x.x Python/3.x.x Windows/10 exe/AMD64
+```
+
+##### macOS
+
+1. Open your browser and go to: **https://awscli.amazonaws.com/AWSCLIV2.pkg**
+2. The `.pkg` installer file downloads automatically.
+3. Double-click the downloaded file and follow the installer wizard.
+4. Open a new Terminal window and verify:
+
+```bash
+aws --version
+# Expected: aws-cli/2.x.x Python/3.x.x Darwin/23.x.x
+```
+
+##### Linux (Ubuntu / Amazon Linux / CentOS)
+
+Linux does not have a GUI installer. Use the terminal steps in the **Alternative** section below.
+
+---
+
+#### Alternative: Command Line Installation
+
+Use these commands if you prefer not to use the browser installer, or if you are on a headless server.
+
+##### Windows (PowerShell as Administrator)
+
+```powershell
+# Install silently via PowerShell (no browser needed)
 msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi /quiet
 
-# After installation, CLOSE and REOPEN your terminal, then verify:
+# Close and reopen your terminal, then verify:
 aws --version
 # Expected: aws-cli/2.x.x Python/3.x.x Windows/10 exe/AMD64
 ```
@@ -840,7 +888,7 @@ aws --version
 ##### macOS
 
 ```bash
-# Download and install the official package
+# Download and install the official package via terminal
 curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
 sudo installer -pkg AWSCLIV2.pkg -target /
 
@@ -954,7 +1002,20 @@ SSH key pairs are required to connect to EC2 instances. The key pair consists of
 - **Public key:** Stored by AWS, injected into the EC2 instance at launch.
 - **Private key (`.pem` file):** Stored on YOUR machine. This is your "password" to the server. If you lose it, you lose access.
 
-#### Step-by-Step (CLI)
+#### Step-by-Step (AWS Console)
+
+1. Go to the AWS Console → Search **"EC2"** → Click **EC2**.
+2. In the left sidebar, scroll down to **"Network & Security"** → Click **"Key Pairs"**.
+3. Click **"Create key pair"**.
+4. Name: `prod-ssh-keypair`
+5. Key pair type: **ED25519**
+6. Private key file format: **.pem** (for Linux/Mac/WSL) or **.ppk** (for PuTTY on Windows)
+7. Click **"Create key pair"** — the `.pem` file automatically downloads.
+8. Move it to a safe location and restrict its permissions (see below).
+
+_Why `ed25519`?_ It is faster and more secure than the older `rsa` key type. Use `rsa` only if connecting from very old SSH clients that do not support ed25519.
+
+#### Alternative: AWS CLI
 
 ```bash
 # Create a key pair and save the private key to a file
@@ -971,19 +1032,6 @@ chmod 400 prod-ssh-keypair.pem
 # Right-click the file → Properties → Security → Advanced
 # Remove all users except your own, set to "Read" only.
 ```
-
-_Why `ed25519`?_ It is faster and more secure than the older `rsa` key type. Use `rsa` only if connecting from very old SSH clients that do not support ed25519.
-
-#### Step-by-Step (AWS Console)
-
-1. Go to the AWS Console → Search **"EC2"** → Click **EC2**.
-2. In the left sidebar, scroll down to **"Network & Security"** → Click **"Key Pairs"**.
-3. Click **"Create key pair"**.
-4. Name: `prod-ssh-keypair`
-5. Key pair type: **ED25519**
-6. Private key file format: **.pem** (for Linux/Mac/WSL) or **.ppk** (for PuTTY on Windows)
-7. Click **"Create key pair"** — the `.pem` file automatically downloads.
-8. Move it to a safe location and set permissions: `chmod 400 prod-ssh-keypair.pem`
 
 #### Validation
 
@@ -1099,12 +1147,18 @@ This is the fastest safe path from a blank AWS account to a live HTTPS Node.js a
 
 _Validation:_ You can open the AWS Console and see your account ID in the top-right dropdown.
 
-### Step 2: Setup IAM + AWS CLI + MFA
+### Step 2: Setup IAM + MFA (+ Optional AWS CLI)
 
 1. Enable MFA on the Root account (IAM → Security credentials → MFA).
 2. Create an IAM Admin user (IAM → Users → Create user → attach `AdministratorAccess`).
-3. Create Access Keys for the IAM Admin user (Security credentials → Create access key).
-4. Install AWS CLI and configure credentials:
+3. Log out of Root. Log in as your new IAM Admin user.
+
+_Validation:_ You can sign in as the IAM user and see the Console dashboard. Your username appears in the top-right menu.
+
+**Optional — Setup AWS CLI:**
+
+4. Create Access Keys for the IAM Admin user (Security credentials → Create access key).
+5. Install AWS CLI and configure credentials:
 
 ```bash
 aws configure
@@ -1129,7 +1183,44 @@ _Validation:_ You can see public and private subnets in the VPC Console.
 
 ### Step 4: Launch EC2 (Key Pair + Security Group + Instance)
 
-Create the SSH key pair and security group (CLI):
+**Create the SSH key pair (Console):**
+
+1. Search **EC2** → in the left menu, click **Key Pairs**.
+2. Click **Create key pair**.
+3. Name: `prod-ssh-keypair`, Type: **ED25519**, Format: **.pem**.
+4. Click **Create key pair** — the `.pem` file downloads.
+5. Set permissions: `chmod 400 prod-ssh-keypair.pem` (macOS/Linux) or restrict via file properties (Windows).
+
+**Create the security group (Console):**
+
+1. In EC2, click **Security Groups** → **Create security group**.
+2. Name: `prod-app-sg`, VPC: select `prod-vpc`.
+3. Add inbound rules:
+   - SSH (22): Source **My IP**
+   - HTTP (80): Source **0.0.0.0/0**
+   - HTTPS (443): Source **0.0.0.0/0**
+4. Click **Create security group**.
+
+**Launch the instance (Console):**
+
+1. In EC2, click **Instances** → **Launch instances**.
+2. Name: `api-server-01`.
+3. AMI: **Amazon Linux 2023** (Free tier eligible).
+4. Instance type: **t3.micro**.
+5. Key pair: select `prod-ssh-keypair`.
+6. Network settings → **Edit**: VPC: `prod-vpc`, Subnet: public subnet, Auto-assign public IP: **Enable**, Security group: `prod-app-sg`.
+7. Storage: **20 GiB gp3**.
+8. Click **Launch instance**.
+
+**Allocate an Elastic IP (Console):**
+
+1. In EC2 left menu, click **Elastic IPs** → **Allocate Elastic IP address** → **Allocate**.
+2. Select the new EIP → **Actions** → **Associate Elastic IP address**.
+3. Select your instance (`api-server-01`) → **Associate**.
+
+_Validation:_ In EC2 → Instances, your instance shows **Running** with a public Elastic IP.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Key pair
@@ -1164,11 +1255,8 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 443 \
   --cidr 0.0.0.0/0
-```
 
-Launch the instance (CLI):
-
-```bash
+# Launch instance
 aws ec2 run-instances \
   --image-id ami-0abcdef1234567890 \
   --instance-type t3.micro \
@@ -1178,11 +1266,8 @@ aws ec2 run-instances \
   --associate-public-ip-address \
   --count 1
 
-# Allocate an Elastic IP (stable public IP for DNS)
+# Allocate and associate Elastic IP
 aws ec2 allocate-address --domain vpc
-
-# Associate the Elastic IP to the instance
-# Replace INSTANCE_ID and EIP_ALLOCATION_ID with real values
 aws ec2 associate-address \
   --instance-id i-0123456789abcdef0 \
   --allocation-id eipalloc-0123456789abcdef0
@@ -2398,11 +2483,46 @@ In production, we strictly enforce a **3-Tier Subnet Architecture** across at le
 
 ---
 
-### 4.3 Operationalizing the Network: CLI Implementation
+### 4.3 Operationalizing the Network: Step-by-Step
 
-Below is the step-by-step mechanical execution of building a VPC from scratch. In enterprise environments, this is executed via Terraform or AWS CDK, but understanding the underlying API calls is mandatory for debugging.
+#### Step-by-Step (AWS Console)
 
-#### Step 1: Create the VPC
+The AWS Console provides a **"VPC and more"** wizard that creates an entire production-grade VPC in one step — including subnets, route tables, Internet Gateway, and NAT Gateway.
+
+1. Go to **AWS Console** → Search **"VPC"** → Click **"VPC"**.
+2. Click **"Create VPC"** in the top-right.
+3. Select **"VPC and more"** (this creates VPC + subnets + route tables + NAT Gateway in one step).
+4. Configure:
+   - **Name tag auto-generation:** `prod`
+   - **IPv4 CIDR block:** `10.0.0.0/16`
+   - **Number of Availability Zones:** `2`
+   - **Number of public subnets:** `2`
+   - **Number of private subnets:** `2`
+   - **NAT gateways:** `In 1 AZ` (for cost savings) or `1 per AZ` (for production HA)
+   - **VPC endpoints:** `S3 Gateway` (select this — it is free and avoids NAT charges for S3 traffic)
+5. Click **"Create VPC"** — AWS provisions everything automatically.
+6. Verify in the VPC dashboard that all subnets, route tables, IGW, and NAT Gateway are created.
+
+> ⚠️ Cost Warning: NAT Gateways are billed per hour and per GB of data processed. A lightly used dev NAT still costs money, and high-throughput workloads can generate large data charges. Use VPC Endpoints for S3/DynamoDB and avoid NAT in low-traffic environments.
+
+**After creating the VPC**, manually add Isolated Database Subnets (Console):
+
+1. In the VPC left menu, click **Subnets** → **Create subnet**.
+2. Select your `prod-vpc`.
+3. Create two subnets:
+   - **Subnet 1:** Name: `prod-isolated-1a`, AZ: `us-east-1a`, CIDR: `10.0.20.0/24`
+   - **Subnet 2:** Name: `prod-isolated-1b`, AZ: `us-east-1b`, CIDR: `10.0.21.0/24`
+4. **Do NOT** associate these subnets with any route table. They should use the VPC’s default Main Route Table (which only has the `local` route — no internet access).
+
+_These subnets are where RDS, Aurora, ElastiCache, and other data stores live. They are intentionally fully isolated._
+
+---
+
+#### Alternative: AWS CLI — Detailed VPC Build
+
+Below is the step-by-step mechanical execution of building a VPC from scratch via CLI. In enterprise environments, this is executed via Terraform or AWS CDK, but understanding the underlying API calls is mandatory for debugging.
+
+##### CLI Step 1: Create the VPC
 
 ```bash
 # Create a VPC with a /16 CIDR block (providing 65,536 IPs)
@@ -2413,7 +2533,7 @@ aws ec2 create-vpc \
 # Output provides the VpcId (e.g., vpc-0abcd1234)
 ```
 
-#### Step 2: Create Subnets (Public and Private)
+##### CLI Step 2: Create Subnets (Public and Private)
 
 ```bash
 # Create a Public Subnet in Availability Zone A (/24 provides 256 IPs)
@@ -2431,7 +2551,7 @@ aws ec2 create-subnet \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=prod-private-1a}]'
 ```
 
-#### Step 3: Create and Attach the Internet Gateway (IGW)
+##### CLI Step 3: Create and Attach the Internet Gateway (IGW)
 
 ```bash
 # Create the IGW
@@ -2445,7 +2565,7 @@ aws ec2 attach-internet-gateway \
     --internet-gateway-id igw-0wxyz9876
 ```
 
-#### Step 4: Create Route Tables and Configure Routing
+##### CLI Step 4: Create Route Tables and Configure Routing
 
 Every VPC comes with a Main Route Table, but we explicitly create custom route tables for granular control.
 
@@ -2463,7 +2583,7 @@ aws ec2 create-route \
     --gateway-id igw-0wxyz9876
 ```
 
-#### Step 5: Associate Subnets to Route Tables
+##### CLI Step 5: Associate Subnets to Route Tables
 
 A subnet is only "Public" once this association is made.
 
@@ -2474,7 +2594,7 @@ aws ec2 associate-route-table \
     --route-table-id rtb-11112222
 ```
 
-#### Step 6: Create the AZ-B Subnets (High Availability)
+##### CLI Step 6: Create the AZ-B Subnets (High Availability)
 
 > **Why?** A production VPC requires subnets in at least two Availability Zones. If AZ-A suffers an outage, your application continues running in AZ-B. Without multi-AZ subnets, you cannot create an ALB, RDS Multi-AZ, or a proper Auto Scaling Group.
 
@@ -2499,7 +2619,7 @@ aws ec2 associate-route-table \
     --route-table-id rtb-11112222
 ```
 
-#### Step 7: Create Isolated Database Subnets
+##### CLI Step 7: Create Isolated Database Subnets
 
 > **Why?** The database tier must be completely isolated — no internet access whatsoever. These subnets only have the default `local` route (communication within the VPC). This is where RDS, Aurora, ElastiCache, and other data stores live.
 
@@ -2521,13 +2641,11 @@ aws ec2 create-subnet \
 
 _These subnets intentionally have NO route to 0.0.0.0/0. They use only the default VPC `local` route, making them truly isolated._
 
-#### Step 8: Create the NAT Gateway (For Private Subnet Internet Access)
+##### CLI Step 8: Create the NAT Gateway (For Private Subnet Internet Access)
 
 > **What is a NAT Gateway?** A managed AWS service that allows instances in **private** subnets to reach the internet (to download packages, call external APIs) without being directly reachable from the internet. It translates the private IP to a public Elastic IP on outbound connections.
 
 > **Why do you need it?** Without a NAT Gateway, your application servers in the private subnet cannot run `apt update`, `npm install`, call third-party APIs, or download anything from the internet. They are completely internet-blind.
-
-> ⚠️ Cost Warning: NAT Gateways are billed per hour and per GB of data processed. A lightly used dev NAT still costs money, and high-throughput workloads can generate large data charges. Use VPC Endpoints for S3/DynamoDB and avoid NAT in low-traffic environments.
 
 ```bash
 # Step 8a: Allocate an Elastic IP for the NAT Gateway
@@ -2559,7 +2677,7 @@ aws ec2 describe-nat-gateways \
 # Expected: available | 54.xxx.xxx.xxx
 ```
 
-#### Step 9: Create Private Route Table (Route to NAT Gateway)
+##### CLI Step 9: Create Private Route Table (Route to NAT Gateway)
 
 ```bash
 # Create a Custom Private Route Table
@@ -2586,54 +2704,36 @@ aws ec2 associate-route-table \
 
 _Note: The Isolated Database subnets are intentionally NOT associated with any custom route table. They use the VPC's default Main Route Table, which only has the `local` route — no internet access._
 
-#### Step 10: Create the VPC via AWS Console (Visual Alternative)
-
-> For readers who prefer the visual approach, here is the Console walkthrough:
-
-1. Go to **AWS Console** → Search **"VPC"** → Click **"VPC"**.
-2. Click **"Create VPC"** in the top-right.
-3. Select **"VPC and more"** (this creates VPC + subnets + route tables + NAT Gateway in one step).
-4. Configure:
-   - **Name tag auto-generation:** `prod`
-   - **IPv4 CIDR block:** `10.0.0.0/16`
-   - **Number of Availability Zones:** `2`
-   - **Number of public subnets:** `2`
-   - **Number of private subnets:** `2`
-   - **NAT gateways:** `In 1 AZ` (for cost savings) or `1 per AZ` (for production HA)
-   - **VPC endpoints:** `S3 Gateway` (select this — it is free and avoids NAT charges for S3 traffic)
-5. Click **"Create VPC"** — AWS provisions everything automatically.
-6. Verify in the VPC dashboard that all subnets, route tables, IGW, and NAT Gateway are created.
-
 #### Complete VPC Architecture Summary
 
 After completing Steps 1-9, your network topology looks like this:
 
 ```
-┌───────────────────────────────────────────────────────────────┐
-│                        VPC: 10.0.0.0/16                       │
-│                                                               │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐    │
-│  │   PUBLIC TIER (DMZ)      │  │   PUBLIC TIER (DMZ)      │    │
-│  │   10.0.1.0/24 (AZ-A)    │  │   10.0.2.0/24 (AZ-B)    │    │
-│  │   [ALB] [NAT Gateway]   │  │   [ALB]                  │    │
-│  │   Route → IGW            │  │   Route → IGW            │    │
-│  └─────────────────────────┘  └─────────────────────────┘    │
-│                                                               │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐    │
-│  │  PRIVATE APP TIER        │  │  PRIVATE APP TIER        │    │
-│  │  10.0.10.0/24 (AZ-A)    │  │  10.0.11.0/24 (AZ-B)    │    │
-│  │  [EC2] [Node.js] [PM2]  │  │  [EC2] [Node.js] [PM2]  │    │
-│  │  Route → NAT Gateway    │  │  Route → NAT Gateway    │    │
-│  └─────────────────────────┘  └─────────────────────────┘    │
-│                                                               │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐    │
-│  │  ISOLATED DB TIER        │  │  ISOLATED DB TIER        │    │
-│  │  10.0.20.0/24 (AZ-A)    │  │  10.0.21.0/24 (AZ-B)    │    │
-│  │  [RDS] [ElastiCache]    │  │  [RDS Standby]           │    │
-│  │  Route → local ONLY     │  │  Route → local ONLY     │    │
-│  └─────────────────────────┘  └─────────────────────────┘    │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                        VPC: 10.0.0.0/16                    │
+│                                                            │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐  │
+│  │   PUBLIC TIER (DMZ)     │  │   PUBLIC TIER (DMZ)     │  │
+│  │   10.0.1.0/24 (AZ-A)    │  │   10.0.2.0/24 (AZ-B)    │  │
+│  │   [ALB] [NAT Gateway]   │  │   [ALB]                 │  │
+│  │   Route → IGW           │  │   Route → IGW           │  │
+│  └─────────────────────────┘  └─────────────────────────┘  │
+│                                                            │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐  │
+│  │  PRIVATE APP TIER       │  │  PRIVATE APP TIER       │  │
+│  │  10.0.10.0/24 (AZ-A)    │  │  10.0.11.0/24 (AZ-B)    │  │
+│  │  [EC2] [Node.js] [PM2]  │  │  [EC2] [Node.js] [PM2]  │  │
+│  │  Route → NAT Gateway    │  │  Route → NAT Gateway    │  │
+│  └─────────────────────────┘  └─────────────────────────┘  │
+│                                                            │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐  │
+│  │  ISOLATED DB TIER       │  │  ISOLATED DB TIER       │  │
+│  │  10.0.20.0/24 (AZ-A)    │  │  10.0.21.0/24 (AZ-B)    │  │
+│  │  [RDS] [ElastiCache]    │  │  [RDS Standby]          │  │
+│  │  Route → local ONLY     │  │  Route → local ONLY     │  │
+│  └─────────────────────────┘  └─────────────────────────┘  │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ```mermaid
@@ -2911,7 +3011,36 @@ aws ec2 authorize-security-group-ingress \
   --cidr 0.0.0.0/0
 ```
 
-#### Step-by-Step: Create the Application Security Group (CLI)
+#### Step-by-Step: Create the Application Security Group (AWS Console)
+
+1. Go to **AWS Console** → Search **"EC2"** → Click **EC2**.
+2. In the left sidebar, scroll to **"Network & Security"** → Click **"Security Groups"**.
+3. Click **"Create security group"**.
+4. **Security group name:** `prod-app-sg`
+5. **Description:** `Security group for production application servers`
+6. **VPC:** Select your `prod-vpc`
+7. **Inbound rules:** Click **"Add rule"**:
+   - **Rule 1:** Type: `SSH`, Source: `My IP` (auto-fills your IP)
+   - **Rule 2:** Type: `HTTP`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
+   - **Rule 3:** Type: `HTTPS`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
+   - **Rule 4:** Type: `Custom TCP`, Port: `3000`, Source: `10.0.0.0/16`
+8. **Outbound rules:** Leave as default (Allow all).
+9. Click **"Create security group"**.
+
+#### Create the Database Security Group (AWS Console)
+
+1. Repeat the steps above to create a second security group.
+2. **Security group name:** `prod-db-sg`
+3. **Description:** `Security group for production databases`
+4. **VPC:** Select your `prod-vpc`
+5. **Inbound rules:** Click **"Add rule"**:
+   - **Rule 1:** Type: `PostgreSQL/Aurora` (port `5432`), Source: select the `prod-app-sg` security group (SG chaining — only your app servers can reach the database).
+6. **Outbound rules:** Leave as default.
+7. Click **"Create security group"**.
+
+_Validation:_ Open **Security Groups** in EC2 Console. Confirm `prod-app-sg` has 4 inbound rules and `prod-db-sg` has 1 inbound rule sourced from `prod-app-sg`.
+
+#### Alternative: AWS CLI — Create the Application Security Group
 
 ```bash
 # Create the Security Group for application servers
@@ -2952,7 +3081,7 @@ aws ec2 authorize-security-group-ingress \
   --cidr 0.0.0.0/0
 ```
 
-#### Create the Database Security Group
+#### Alternative: AWS CLI — Create the Database Security Group
 
 ```bash
 aws ec2 create-security-group \
@@ -2985,22 +3114,6 @@ aws ec2 describe-security-groups \
     --query 'SecurityGroups[0].IpPermissions' \
     --output json
 ```
-
-#### Step-by-Step: Create Security Group via AWS Console
-
-1. Go to **AWS Console** → Search **"EC2"** → Click **EC2**.
-2. In the left sidebar, scroll to **"Network & Security"** → Click **"Security Groups"**.
-3. Click **"Create security group"**.
-4. **Security group name:** `prod-app-sg`
-5. **Description:** `Security group for production application servers`
-6. **VPC:** Select your `prod-vpc`
-7. **Inbound rules:** Click **"Add rule"**:
-   - **Rule 1:** Type: `SSH`, Source: `My IP` (auto-fills your IP)
-   - **Rule 2:** Type: `HTTP`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
-  - **Rule 3:** Type: `HTTPS`, Source: `Anywhere-IPv4` (`0.0.0.0/0`)
-  - **Rule 4:** Type: `Custom TCP`, Port: `3000`, Source: `10.0.0.0/16`
-8. **Outbound rules:** Leave as default (Allow all).
-9. Click **"Create security group"**.
 
 #### ⚠️ Real-World Warning
 
@@ -3057,33 +3170,7 @@ _Common Errors:_
 - **SSM session fails:** The instance profile was not attached at launch.
 - **SSM shows "Not Managed":** SSM agent is not installed or not running.
 
-#### Step 1: Launch the EC2 Instance (CLI)
-
-```bash
-# Launch a t3.medium instance in a private subnet with the Golden AMI
-aws ec2 run-instances \
-    --image-id ami-0abcdef1234567890 \
-    --instance-type t3.medium \
-    --key-name prod-ssh-keypair \
-    --subnet-id subnet-private123 \
-    --security-group-ids sg-0abc1234def56789 \
-    --iam-instance-profile Name=EC2-SSM-Role \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=api-server-01},{Key=Environment,Value=Production},{Key=Service,Value=AuthAPI}]' \
-    --count 1
-```
-
-> **How to find the AMI ID:** The `--image-id` value is region-specific. To find the latest Amazon Linux 2023 AMI:
-
-```bash
-aws ec2 describe-images \
-    --owners amazon \
-    --filters "Name=name,Values=al2023-ami-2023*-x86_64" \
-    --query 'Images | sort_by(@, &CreationDate) | [-1].[ImageId, Name]' \
-    --output text
-# Example output: ami-0abcdef1234567890  al2023-ami-2023.6.20260501.0-kernel-6.1-x86_64
-```
-
-#### Launch EC2 via AWS Console (Visual Alternative)
+#### Step 1: Launch the EC2 Instance (AWS Console)
 
 1. Go to **AWS Console** → Search **"EC2"** → Click **EC2**.
 2. Click **"Launch instance"** (orange button, top-right).
@@ -3115,6 +3202,21 @@ aws ec2 describe-instances \
     --filters "Name=tag:Name,Values=api-server-01" \
     --query 'Reservations[*].Instances[*].[InstanceId, State.Name, PrivateIpAddress]' \
     --output table
+```
+
+#### Alternative: AWS CLI — Launch the EC2 Instance
+
+```bash
+# Launch a t3.medium instance in a private subnet
+aws ec2 run-instances \
+    --image-id ami-0abcdef1234567890 \
+    --instance-type t3.medium \
+    --key-name prod-ssh-keypair \
+    --subnet-id subnet-private123 \
+    --security-group-ids sg-0abc1234def56789 \
+    --iam-instance-profile Name=EC2-SSM-Role \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=api-server-01},{Key=Environment,Value=Production},{Key=Service,Value=AuthAPI}]' \
+    --count 1
 ```
 
 #### Step 2: SSH into the Instance
@@ -3486,30 +3588,48 @@ S3 provides 99.999999999% (11 nines) of data durability. This means if you store
 
 ---
 
-### 6.2 Bucket Creation & Core Operations (CLI)
+### 6.2 Bucket Creation & Core Operations
 
-#### Step 1: Create the Bucket
+#### Step 1: Create the Bucket (AWS Console)
 
 S3 bucket names are globally unique across all AWS accounts worldwide. Choose a name that follows the enterprise naming convention.
 
+1. Open **AWS Console** → Search **"S3"** → Click **S3**.
+2. Click **"Create bucket"**.
+3. **Bucket name:** `acme-corp-prod-assets` (must be globally unique, lowercase, no spaces).
+4. **AWS Region:** Select your region (e.g., `us-east-1`).
+5. **Object Ownership:** `ACLs disabled (recommended)`.
+6. **Block Public Access:** Leave all four boxes **checked** (default — keeps the bucket private).
+7. **Bucket Versioning:** Enable (recommended for production).
+8. **Default encryption:** `SSE-S3` (default, no extra cost).
+9. Click **"Create bucket"**.
+
+✅ **Validation:** The bucket appears in the S3 bucket list.
+
+#### Step 2: Upload Objects (AWS Console)
+
+1. Click on your bucket name to open it.
+2. Click **"Upload"** → **"Add files"** or **"Add folder"**.
+3. Drag and drop your files or select them from your computer.
+4. Click **"Upload"**.
+
+✅ **Validation:** Files appear in the bucket with status **Succeeded**.
+
+> 💡 For bulk uploads, recursive sync, or CI/CD pipelines, use the CLI commands in the alternative section below.
+
+#### Step 3: Delete Objects and Buckets (AWS Console)
+
+1. Select the object(s) → click **"Delete"** → type `permanently delete` to confirm.
+2. To delete a bucket: first empty it (select all objects → Delete), then go back to the bucket list, select the bucket, and click **"Delete"** → type the bucket name to confirm.
+
+---
+
+#### Alternative: AWS CLI — Bucket Operations
+
 ```bash
-# Create a bucket in the us-east-1 region
+# Create a bucket
 aws s3 mb s3://acme-corp-prod-assets --region us-east-1
-```
 
-_Validation:_
-
-```bash
-# List all buckets to confirm creation
-aws s3 ls
-
-# Expected output includes:
-# 2026-05-01 10:00:00 acme-corp-prod-assets
-```
-
-#### Step 2: Upload Objects
-
-```bash
 # Upload a single file
 aws s3 cp ./build/index.html s3://acme-corp-prod-assets/frontend/index.html
 
@@ -3518,23 +3638,10 @@ aws s3 cp ./build/ s3://acme-corp-prod-assets/frontend/ --recursive
 
 # Sync a local directory (only uploads changed files — idempotent)
 aws s3 sync ./build/ s3://acme-corp-prod-assets/frontend/ --delete
-```
 
-_Validation:_
-
-```bash
-# List the contents of the bucket to confirm the upload
+# List bucket contents
 aws s3 ls s3://acme-corp-prod-assets/frontend/ --recursive --human-readable
 
-# Download a file to verify integrity
-aws s3 cp s3://acme-corp-prod-assets/frontend/index.html ./downloaded-index.html
-diff ./build/index.html ./downloaded-index.html
-# If 'diff' produces no output, the files are identical.
-```
-
-#### Step 3: Delete Objects and Buckets
-
-```bash
 # Delete a single object
 aws s3 rm s3://acme-corp-prod-assets/frontend/old-file.js
 
@@ -3555,17 +3662,30 @@ S3 access control is the single most breached component in the entire AWS ecosys
 
 AWS provides an account-level setting called "S3 Block Public Access." When enabled, it overrides all bucket policies and ACLs to prevent any bucket in the account from being made public, regardless of individual bucket configuration.
 
+**Step-by-Step (AWS Console):**
+
+1. Open **AWS Console** → Search **"S3"** → Click **S3**.
+2. In the left sidebar, click **"Block Public Access settings for this account"**.
+3. Click **"Edit"**.
+4. Ensure **all four checkboxes** are checked:
+   - Block public access to buckets and objects granted through _new_ ACLs
+   - Block public access to buckets and objects granted through _any_ ACLs
+   - Block public access to buckets and objects granted through _new_ public bucket or access point policies
+   - Block public and cross-account access to buckets and objects through _any_ public bucket or access point policies
+5. Click **"Save changes"** → type `confirm` to confirm.
+
+✅ **Validation:** All four settings show as **On**.
+
+**Alternative: AWS CLI**
+
 ```bash
 # Enable Block Public Access at the ACCOUNT level (mandatory for all accounts)
 aws s3control put-public-access-block \
     --account-id 123456789012 \
     --public-access-block-configuration \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-```
 
-_Validation:_
-
-```bash
+# Validation
 aws s3control get-public-access-block --account-id 123456789012
 # All four settings must be 'true'.
 ```
@@ -3695,7 +3815,22 @@ S3 can serve static web content (HTML, CSS, JavaScript, images) directly via an 
 - Applications requiring server-side rendering (SSR), dynamic API routes, or database connections. Use ECS/EKS/Lambda for those.
 - If you need HTTPS with a custom domain. S3 website endpoints only support HTTP natively. You must place CloudFront in front of S3 for HTTPS with ACM certificates.
 
-#### Step-by-Step Setup:
+#### Step-by-Step Setup (AWS Console):
+
+1. Open **AWS Console** → Search **"S3"** → click your bucket (e.g., `acme-corp-marketing-site`).
+2. Click the **"Properties"** tab.
+3. Scroll down to **"Static website hosting"** → click **"Edit"**.
+4. Select **"Enable"**.
+5. **Index document:** `index.html`
+6. **Error document:** `error.html`
+7. Click **"Save changes"**.
+8. Go to the **"Objects"** tab → click **"Upload"** → upload your built SPA files (the `build/` folder contents).
+9. For a **PRIVATE bucket behind CloudFront (RECOMMENDED):** No public access needed. CloudFront OAC handles auth.
+10. For a **TRULY PUBLIC static site (use with extreme caution):** You must disable Block Public Access on THIS bucket and add a public read policy.
+
+✅ **Validation:** The S3 website endpoint is shown in the Static website hosting section under Properties. Open it in a browser to verify.
+
+**Alternative: AWS CLI**
 
 ```bash
 # 1. Enable static website hosting
@@ -3705,12 +3840,6 @@ aws s3 website s3://acme-corp-marketing-site \
 
 # 2. Upload the built SPA
 aws s3 sync ./build/ s3://acme-corp-marketing-site/ --delete
-
-# 3. For a PRIVATE bucket behind CloudFront (RECOMMENDED):
-#    No public access needed. CloudFront OAC handles auth.
-#
-# For a TRULY PUBLIC static site (use with extreme caution):
-# You must disable Block Public Access on THIS bucket and add a public read policy.
 ```
 
 _Validation:_
@@ -3939,11 +4068,73 @@ Choosing the wrong database engine is a decision that haunts an organization for
 
 ---
 
-### 7.3 Provisioning RDS: Step-by-Step (CLI)
+### 7.3 Provisioning RDS: Step-by-Step
 
-#### Step 1: Create a DB Subnet Group
+#### Step 1: Create a DB Subnet Group (AWS Console)
 
 RDS instances must be launched into a DB Subnet Group—a collection of at least two subnets in different Availability Zones within your VPC. This is required for Multi-AZ deployments.
+
+1. Open the **AWS Console** → Search **"RDS"** → Click **RDS**.
+2. In the left sidebar, click **"Subnet groups"** → **"Create DB subnet group"**.
+3. **Name:** `prod-db-subnet-group`
+4. **Description:** `Production database subnets across us-east-1a and us-east-1b`
+5. **VPC:** Select your `prod-vpc`.
+6. **Availability Zones:** Select at least two (e.g., `us-east-1a` and `us-east-1b`).
+7. **Subnets:** Select one isolated/private subnet from each chosen AZ.
+8. Click **"Create"**.
+
+✅ **Validation:** The subnet group appears in the list with status **"Complete"**.
+
+#### Step 2: Create the RDS Instance (AWS Console)
+
+1. In the RDS left sidebar, click **"Databases"** → **"Create database"**.
+2. **Creation method:** Standard create.
+3. **Engine:** PostgreSQL → Version **16.4**.
+4. **Templates:** Production.
+5. **DB instance identifier:** `prod-auth-db`.
+6. **Master username:** `dbadmin`.
+7. **Credentials management:** Choose **"Managed in AWS Secrets Manager"** (AWS auto-generates and stores the password).
+8. **DB instance class:** `db.m5.large`.
+9. **Storage type:** `gp3` | **Allocated storage:** `100 GiB`.
+10. **Multi-AZ deployment:** Enable **"Multi-AZ DB instance"**.
+11. **VPC:** Select your `prod-vpc`.
+12. **DB subnet group:** Select `prod-db-subnet-group`.
+13. **VPC security group:** Select `prod-db-sg` (remove the default).
+14. **Public access:** **No**.
+15. Expand **"Additional configuration"**:
+    - **Backup retention period:** `35` days.
+    - **Backup window:** `03:00–04:00 UTC`.
+    - **Maintenance window:** `Sunday 05:00–06:00 UTC`.
+    - **Enable encryption:** ✅ (select your KMS key).
+    - **Enable deletion protection:** ✅.
+    - **Copy tags to snapshots:** ✅.
+    - **Tags:** `Environment=Production`, `Service=AuthAPI`.
+16. Click **"Create database"**.
+
+> **Note on the key settings:**
+> - **Multi-AZ:** Deploys a synchronous standby replica in a second AZ. Automatic failover in ~60–120 seconds.
+> - **Encryption:** Encrypts all data, logs, snapshots, and replicas at rest.
+> - **Deletion protection:** Must be explicitly disabled before the instance can be deleted.
+> - **35-day retention:** Defines your Recovery Point Objective (RPO).
+
+✅ **Validation:** The database status changes from **"Creating"** to **"Available"** (takes 10–15 minutes).
+
+#### Step 3: Store the Password in Secrets Manager (AWS Console)
+
+If you chose **"Managed in AWS Secrets Manager"** in Step 2, AWS has already created the secret. Verify it:
+
+1. Open **AWS Console** → Search **"Secrets Manager"** → Click **Secrets Manager**.
+2. Find the secret named `rds!db-<uuid>` (auto-created by RDS) or create a new one manually.
+3. To create manually: Click **"Store a new secret"** → **"Other type of secret"**.
+4. Add key-value pairs: `username`, `password`, `host`, `port`, `dbname`.
+5. **Secret name:** `prod/auth-db/master-credentials`.
+6. Click **"Store"**.
+
+> The master password must be stored in Secrets Manager—never in a `.env` file, a Slack message, or a Confluence page.
+
+---
+
+#### Alternative: AWS CLI — Create a DB Subnet Group
 
 ```bash
 aws rds create-db-subnet-group \
@@ -3952,7 +4143,7 @@ aws rds create-db-subnet-group \
     --subnet-ids '["subnet-isolated-1a","subnet-isolated-1b"]'
 ```
 
-#### Step 2: Create the RDS Instance
+#### Alternative: AWS CLI — Create the RDS Instance
 
 ```bash
 aws rds create-db-instance \
@@ -3977,13 +4168,6 @@ aws rds create-db-instance \
     --tags Key=Environment,Value=Production Key=Service,Value=AuthAPI
 ```
 
-_Critical Flags Explained:_
-
-- `--multi-az`: Deploys a synchronous standby replica in a second AZ. If the primary AZ fails, RDS automatically fails over to the standby in approximately 60-120 seconds.
-- `--storage-encrypted`: Encrypts all data, logs, snapshots, and replicas at rest using the specified KMS key.
-- `--deletion-protection`: Prevents accidental database deletion via CLI or console. Must be explicitly disabled before deletion.
-- `--backup-retention-period 35`: Retains automated daily snapshots for 35 days (the maximum). This directly defines your Recovery Point Objective (RPO).
-
 _Validation:_
 
 ```bash
@@ -3997,9 +4181,7 @@ aws rds describe-db-instances \
     --output table
 ```
 
-#### Step 3: Store the Password in Secrets Manager
-
-The master password was generated randomly in the provisioning command. It must be immediately stored in AWS Secrets Manager—never in a `.env` file, a Slack message, or a Confluence page.
+#### Alternative: AWS CLI — Store the Password in Secrets Manager
 
 ```bash
 aws secretsmanager create-secret \
@@ -6851,6 +7033,25 @@ Because secrets are the skeleton keys of your infrastructure. A leaked database 
 
 ##### Phase 1: Create the Secret
 
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"Secrets Manager"** → Click **Secrets Manager**.
+2. Click **"Store a new secret"**.
+3. Choose **Secret type**: Select **"Other type of secret"** (for general API keys/tokens) or **"Credentials for Amazon RDS database"** (for database credentials).
+4. **Key/value pairs:** Enter the secret keys and values (e.g., Key: `api_key`, Value: `sk_live_abc123xyz789`; Key: `webhook_secret`, Value: `whsec_def456`).
+5. **Encryption key:** Select `aws/secretsmanager` (default KMS key) or a custom KMS key. Click **Next**.
+6. **Secret name:** `prod/payments/stripe-api-key`.
+7. **Description:** `Stripe live API key for the payments service`.
+8. **Tags:** Add tags:
+   - Key: `Environment`, Value: `Production`
+   - Key: `Service`, Value: `PaymentsAPI`
+   - Key: `Owner`, Value: `platform-team`
+9. Click **Next** → leave rotation disabled for now → click **Next** → click **Store**.
+
+_Validation:_ The secret `prod/payments/stripe-api-key` is displayed in the secrets list.
+
+**Alternative: AWS CLI**
+
 ```bash
 aws secretsmanager create-secret \
     --name prod/payments/stripe-api-key \
@@ -6860,9 +7061,19 @@ aws secretsmanager create-secret \
     --tags Key=Environment,Value=Production Key=Service,Value=PaymentsAPI Key=Owner,Value=platform-team
 ```
 
-##### Phase 2: Retrieve the Secret (Application Code)
+##### Phase 2: Retrieve the Secret
 
 The application retrieves secrets at startup or on-demand. Never cache secrets indefinitely—always respect the rotation interval.
+
+**Step-by-Step (AWS Console):**
+
+1. In the **Secrets Manager Console**, click your secret `prod/payments/stripe-api-key`.
+2. Scroll down to **Secret value** and click **Retrieve secret value**.
+3. You can view the secret in **Key/value** layout or **Plaintext** (JSON format).
+
+_Validation:_ The correct values for `api_key` and `webhook_secret` are displayed.
+
+**Alternative: AWS CLI**
 
 ```bash
 # CLI retrieval (for scripts/debugging only)
@@ -6902,7 +7113,20 @@ const pool = new Pool({
 
 ##### Phase 3: Automatic Rotation
 
-Secrets Manager can automatically rotate database credentials by invoking a Lambda function on a configurable schedule.
+Secrets Manager can automatically rotate credentials by invoking a Lambda function on a configurable schedule.
+
+**Step-by-Step (AWS Console):**
+
+1. In the **Secrets Manager Console**, select the secret `prod/auth-db/master-credentials`.
+2. Scroll to the **Rotation configuration** section and click **Edit rotation**.
+3. Toggle **Automatic rotation** to **On**.
+4. Configure the rotation schedule (e.g., rotate every **30 days**).
+5. Choose a rotation Lambda function (either create a new one using AWS templates or select an existing one).
+6. Click **Save**.
+
+_Validation:_ The Rotation status shows as **Enabled** with the next scheduled rotation date.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Enable automatic rotation every 30 days
@@ -6933,6 +7157,22 @@ aws secretsmanager describe-secret \
 
 If a secret is leaked (found in a public GitHub repo, exposed in application logs, stolen by an attacker):
 
+**Step-by-Step (AWS Console):**
+
+1. In the **Secrets Manager Console**, open the compromised secret.
+2. Click **Rotate secret immediately** to force the rotation Lambda to run and generate a new password/credential right away.
+3. Invalidate all active sessions that may be using the old credential:
+   - For databases: Go to RDS and terminate/reboot the instance or use SQL client to kill active sessions.
+   - For third-party API keys: Go to the vendor provider's portal (Stripe, Twilio, etc.) and revoke/delete the leaked API key.
+4. Audit usage of the secret in **CloudTrail Console**:
+   - Go to **CloudTrail** → **Event history**.
+   - Filter by **Lookup attribute**: `Resource name`, enter `prod/auth-db/master-credentials`.
+   - Review API operations like `GetSecretValue` to identify unauthorized access.
+
+_Validation:_ The secret value changes, old credentials fail to connect, and CloudTrail lists the history of access events.
+
+**Alternative: AWS CLI**
+ 
 ```bash
 # Step 1: IMMEDIATELY rotate the secret (forces a new password NOW)
 aws secretsmanager rotate-secret \
@@ -6969,6 +7209,46 @@ When an EC2 instance in a private subnet calls `aws s3 get-object`, the request 
 ##### What is the solution?
 
 A VPC Endpoint creates a private, direct connection between your VPC and the AWS service. Traffic never leaves the AWS network backbone.
+
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"VPC"** → Click **VPC**.
+2. In the left sidebar, click **Endpoints** → click **Create endpoint**.
+3. **Gateway Endpoint for S3 (free, no per-hour charge):**
+   - **Name:** `prod-s3-endpoint`
+   - **Service category:** **AWS services**.
+   - **Services:** Search for `s3` and select the service name `com.amazonaws.us-east-1.s3` with Type **Gateway**.
+   - **VPC:** Select your VPC (e.g., `prod-vpc`).
+   - **Route tables:** Check the checkbox for your private route table (e.g., `prod-private-rt`). This automatically adds the route to the endpoint.
+   - **Policy:** Select **Custom** and paste the S3 access policy allowing S3 actions on your specific buckets:
+     ```json
+     {
+       "Statement": [{
+         "Effect": "Allow",
+         "Principal": "*",
+         "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+         "Resource": [
+           "arn:aws:s3:::acme-corp-prod-assets",
+           "arn:aws:s3:::acme-corp-prod-assets/*",
+           "arn:aws:s3:::acme-corp-prod-logs",
+           "arn:aws:s3:::acme-corp-prod-logs/*"
+         ]
+       }]
+     }
+     ```
+4. **Interface Endpoint for Secrets Manager:**
+   - Click **Create endpoint** again.
+   - **Name:** `prod-secretsmanager-endpoint`.
+   - **Services:** Search `secretsmanager` and select `com.amazonaws.us-east-1.secretsmanager` with Type **Interface**.
+   - **VPC:** Select your VPC.
+   - **Subnets:** Select the private subnets where your application servers run.
+   - **Security groups:** Select a security group that allows inbound HTTPS (443) traffic from your application servers' security group (`sg-app`).
+   - **Private DNS names:** Ensure **Enable Private DNS name** is checked.
+5. Click **Create endpoint**.
+
+_Validation:_ Under Endpoints, verify both endpoints show status **Available**.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Create a Gateway Endpoint for S3 (free, no per-hour charge)
@@ -7026,6 +7306,32 @@ App Servers → Redis (sg-redis)
               ↓ Port 6379 Inbound ONLY from sg-app
 ```
 
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"EC2"** → Click **Security Groups** (under Network & Security).
+2. Configure **sg-app-prod** (App Servers) to only allow traffic from the ALB:
+   - Select your app server security group (`sg-app-prod`).
+   - Click **Edit inbound rules**.
+   - Add a rule: Port `3000` (or app port), Protocol `TCP`.
+   - **Source:** Search for and select the ALB security group (`sg-alb-prod`).
+   - Click **Save rules**.
+3. Configure **sg-db-prod** (Database) to only allow traffic from the App Servers:
+   - Select your database security group (`sg-db-prod`).
+   - Click **Edit inbound rules**.
+   - Add a rule: Port `5432` (PostgreSQL), Protocol `TCP`.
+   - **Source:** Search for and select the app server security group (`sg-app-prod`).
+   - Click **Save rules**.
+4. Configure **sg-redis-prod** (Cache) to only allow traffic from the App Servers:
+   - Select your Redis security group (`sg-redis-prod`).
+   - Click **Edit inbound rules**.
+   - Add a rule: Port `6379`, Protocol `TCP`.
+   - **Source:** Search for and select `sg-app-prod`.
+   - Click **Save rules**.
+
+_Validation:_ Under Inbound Rules for each group, the source shows the security group ID of the tier above it.
+
+**Alternative: AWS CLI**
+
 ```bash
 # sg-app: Only allow traffic from the ALB Security Group
 aws ec2 authorize-security-group-ingress \
@@ -7048,12 +7354,40 @@ aws ec2 authorize-security-group-ingress \
     --port 6379 \
     --source-group sg-app-prod
 ```
-
 With this chain, even if an attacker compromises a publicly accessible ALB rule, they cannot directly reach the database because `sg-db` only accepts connections from `sg-app`, not from `sg-alb`.
 
 #### 12.4.3 AWS WAF: Application-Layer Firewall
 
 AWS WAF (Web Application Firewall) sits in front of the ALB and inspects every HTTP request before it reaches your application. It can block requests based on IP reputation, geographic origin, SQL injection patterns, cross-site scripting (XSS) payloads, and rate limiting.
+
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"WAF"** → Click **WAF & Shield**.
+2. Click **Create web ACL**.
+3. Configure resource details:
+   - **Resource type:** Regional resources (ALB, API Gateway, etc.).
+   - **Region:** Select your region (e.g., `us-east-1`).
+   - **Name:** `prod-api-waf`.
+   - **Associated AWS resources:** Click **Add AWS resources** → select your Application Load Balancer → Click **Add**.
+4. Click **Next** to Add rules and rule groups:
+   - Click **Add rules** → select **Add managed rule groups**.
+   - Expand **AWS managed rule groups**:
+     - Find **Core rule set** and toggle **Add to web ACL** (blocks common OWASP vulnerabilities).
+     - Find **SQL database** and toggle **Add to web ACL** (blocks SQL injection).
+   - Click **Add rules** → select **Add my own rules and rule groups**:
+     - **Rule type:** Rate-based rule.
+     - **Name:** `RateLimitRule`.
+     - **Rate limit:** `2000` requests per 5 minutes.
+     - **IP address to use:** Source IP address.
+     - **Action:** Block.
+     - Click **Add rule**.
+5. Click **Next** to configure rule priority (Core rule set first, SQL next, then rate limiting).
+6. Click **Next** to configure metrics (leave default CloudWatch metric names).
+7. Click **Next** to review, then click **Create web ACL**.
+
+_Validation:_ Under Web ACLs, select `prod-api-waf` and verify your ALB is listed under **Associated AWS resources**.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Create a WAF Web ACL with AWS Managed Rule Groups
@@ -7135,6 +7469,17 @@ Amazon GuardDuty is a managed threat detection service that continuously monitor
 - **Cryptocurrency Mining:** GPU or CPU usage patterns consistent with mining activity.
 - **S3 Bucket Enumeration:** An external entity attempting to list or access S3 buckets they do not own.
 
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"GuardDuty"** → Click **GuardDuty**.
+2. Click **Get started**.
+3. Click **Enable GuardDuty**.
+4. To view findings: In the left sidebar, click **Findings**. Filter findings by Severity (e.g., GTE 7 for high severity).
+
+_Validation:_ In GuardDuty Settings, status shows as **Active**.
+
+**Alternative: AWS CLI**
+
 ```bash
 # Enable GuardDuty (one-time setup per account per region)
 aws guardduty create-detector --enable --finding-publishing-frequency FIFTEEN_MINUTES
@@ -7163,6 +7508,23 @@ AWS CloudTrail records every API call made in your AWS account—who called what
 
 Without CloudTrail, you have no way to answer: "Who deleted the production database?" "When was this IAM role's policy modified?" "Has anyone been accessing this S3 bucket from outside our VPC?"
 
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"CloudTrail"** → Click **CloudTrail**.
+2. In the left sidebar, click **Trails** → click **Create trail**.
+3. Configure trail details:
+   - **Trail name:** `org-security-trail`.
+   - **Storage location:** Select **Create new S3 bucket** (e.g., `acme-corp-cloudtrail-logs`).
+   - **Log file SSE-KMS encryption:** Enable and choose/create a KMS key.
+   - **Log file validation:** Check **Enabled** (this ensures the integrity of the logs).
+   - **CloudWatch Logs:** (Optional) Enable to send events to CloudWatch.
+4. Click **Next** → Select event types: **Management events** (Read and Write) and **Data events** (if logging S3/Lambda data access).
+5. Click **Next** → Review the details and click **Create trail**.
+
+_Validation:_ Under Trails, verify `org-security-trail` has status **Logging** with a green checkmark.
+
+**Alternative: AWS CLI**
+
 ```bash
 # Create an organization-wide trail that logs to a centralized S3 bucket
 aws cloudtrail create-trail \
@@ -7182,7 +7544,15 @@ _Critical Flags:_
 - `--is-multi-region-trail`: Captures API calls in ALL regions, not just the trail's home region. Attackers frequently operate in regions you are not monitoring.
 - `--enable-log-file-validation`: CloudTrail generates a digest file with a cryptographic hash of each log file. If an attacker attempts to modify or delete log entries, the hash validation will fail, proving tampering occurred.
 
-_Validation:_
+##### Auditing and Event Lookup
+
+**Step-by-Step (AWS Console):**
+
+1. In the **CloudTrail Console** left sidebar, click **Event history**.
+2. Select a **Lookup attribute** (e.g., choose **Event name** and enter `DeleteBucket`).
+3. View the list of matching events, including event time, user name, and source IP address.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Verify the trail is active and logging
@@ -7209,6 +7579,18 @@ aws cloudtrail lookup-events \
 - _The Mandate:_
   1. Enable **IMDSv2 (Instance Metadata Service v2)** on all EC2 instances. IMDSv2 requires a session token obtained via a PUT request, which cannot be obtained via an SSRF attack because the attacker cannot inject custom HTTP methods through the application's URL fetcher.
   2. Validate and sanitize all user-provided URLs. Block requests to RFC 1918 private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) and the link-local IMDS address (`169.254.169.254`).
+
+**Step-by-Step (AWS Console):**
+
+1. Go to **AWS Console** → Search **"EC2"** → click **Instances**.
+2. Select your instance (e.g., `api-server-01`).
+3. Click **Actions** → **Instance settings** → **Modify instance metadata options**.
+4. Set **IMDSv2** to **Required**.
+5. Click **Save**.
+
+_Validation:_ Run `curl` to metadata endpoint from the instance and verify it requires a token.
+
+**Alternative: AWS CLI**
 
 ```bash
 # Enforce IMDSv2 on all existing instances
@@ -7964,14 +8346,14 @@ Confirm session storage works across multiple instances and survives restarts.
 #### Why Stateless Matters
 
 ```text
-┌─────────────────────┐             ┌─────────────────────┐
-│    User Device      │             │    User Device      │
-└─────────┬───────────┘             └─────────┬───────────┘
-          │                                   │
-          ▼                                   ▼
+┌─────────────────────┐       ┌─────────────────────┐
+│    User Device      │       │    User Device      │
+└─────────┬───────────┘       └─────────┬───────────┘
+          │                             │
+          ▼                             ▼
     ┌──────────────────────────────────────────┐
-    │          Amazon Route 53 DNS               │
-    └───────────────┬────────────────────────────┘
+    │          Amazon Route 53 DNS             │
+    └───────────────┬──────────────────────────┘
                     │
                     ▼
           ┌──────────────────────────┐
@@ -7983,7 +8365,7 @@ Confirm session storage works across multiple instances and survives restarts.
           ┌──────────────────────────┐
           │   Application Load       │
           │   Balancer (ALB)         │
-          │   Target Group: auth-sg │
+          │   Target Group: auth-sg  │
           └──────────────┬───────────┘
                          │
       ┌──────────────────┴──────────────────┐
@@ -7994,10 +8376,10 @@ Confirm session storage works across multiple instances and survives restarts.
 │                           │        │                           │
 │  Process: pm2 start auth  │        │  Process: pm2 start auth  │
 │                           │        │                           │
-│  ✓ Session -> Redis       │        │  ✓ Session -> Redis       │
-│  ✓ JWT -> Redis           │        │  ✓ JWT -> Redis           │
+│  ✓ Session -> Redis       │        │  ✓ Session -> Redis      │
+│  ✓ JWT -> Redis           │        │  ✓ JWT -> Redis          │
 │                           │        │                           │
-└───────────┬─────────────┘          └─────────────┬─────────────┘
+└─────────────┬─────────────┘        └─────────────┬─────────────┘
             │                                      │
             └──────────┬───────────────────────────┘
                        │
