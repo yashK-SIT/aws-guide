@@ -158,7 +158,7 @@ Micro-steps:
 
 1. In the search bar, type **IAM** and open it.
 2. Click **Users** -> **Create user**.
-3. Username: `yourname-admin` (example: `ravi-admin`).
+3. Username: `yourname-admin` (example: `mark-admin`).
 4. Check **Provide user access to the AWS Management Console**.
 5. Choose **I want to create an IAM user**.
 6. Set a custom password and uncheck "Users must create a new password".
